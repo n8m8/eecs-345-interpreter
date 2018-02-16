@@ -12,3 +12,30 @@
 ; Alex Marshall awm48
 ; Nathan Walls nfw10
 ; Main Interpreter
+
+
+(define stateInit
+  (lambda ()
+    ('())))
+
+(define stateAdd
+  (lambda (item value state)
+    (cond
+      ((null? item) error)
+      ((null? value) error)
+      (else (cons (list item value) (state))))))
+
+(define stateRemove
+  (lambda (item state)
+    (cond
+      ((eq? (caar state) item) (cdr state))
+      (else (stateRemove item (cdr state))))))
+
+(define Mvalue.atom
+  (lambda (a state)
+    (cond
+      ((number? a) a)
+      ((boolean? a) a)
+      ((eq? a 'true) #t)
+      ((eq? a 'false) #f)
+      (else ('somethinggoeshere)))))
