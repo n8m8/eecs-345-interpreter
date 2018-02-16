@@ -31,6 +31,13 @@
       ((eq? (caar state) item) (cdr state))
       (else (stateRemove item (cdr state))))))
 
+(define stateGet
+  (lambda (item state)
+    (cond
+      ((eq? (caar state) item) (cadr state))
+      ((null? (cdr state)) error)
+      (else (stateGet item (cdr state))))))
+
 (define Mvalue.atom
   (lambda (a state)
     (cond
@@ -38,4 +45,4 @@
       ((boolean? a) a)
       ((eq? a 'true) #t)
       ((eq? a 'false) #f)
-      (else ('somethinggoeshere)))))
+      (else (stateGet a state)))))
