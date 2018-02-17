@@ -56,10 +56,20 @@
 
 (define Mstate.assign
   (lambda (s state)
-    'notimplementedException
+    (cond
+      ((null? s) state)
+      ((eq? operator
     ))
 
+<<<<<<< HEAD
 (define firststatement caar)
+=======
+(define operator car)
+      
+(define firststatement
+  (lambda (l)
+    car l))
+>>>>>>> 9e839dc8954501d8de6e5a95654bd726449febec
 
 (define stateAdd
   (lambda (item value state)
