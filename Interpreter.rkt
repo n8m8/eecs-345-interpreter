@@ -27,7 +27,7 @@
   (lambda (tree state)
     (cond
       ((null? tree) state)
-      ((equal? (firststatement tree) 'return) (M_Bool (cadar tree)))
+      ((equal? (firststatement tree) 'return) (M_Bool (cadar tree) state))
       ;((eq? (firststatement tree) 'var) (dovarstuff))
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
@@ -59,17 +59,10 @@
     (cond
       ((null? s) state)
       ((eq? operator
-    ))
+    )))))
 
-<<<<<<< HEAD
 (define firststatement caar)
-=======
 (define operator car)
-      
-(define firststatement
-  (lambda (l)
-    car l))
->>>>>>> 9e839dc8954501d8de6e5a95654bd726449febec
 
 (define stateAdd
   (lambda (item value state)
@@ -103,11 +96,21 @@
 (define Mstate.declare
   (lambda (varname state)
     ((stateRemove varname state) (stateAdd varname 'undefined state))))
+;Evaluates mathmatical expressions
+;The order of operations is +,-,*,/,%
+(define M_val_expr
+  (lambda (state expr)
+    (cond
+      ((null? expr) '())
+      ((number? (car expr)) expr)
+      ((eq? (car expr) '+) (+ (M_val_expr state (cdr expr)) (M_val_expr state (cddr expr))))
+      (else 'undefined))))
+      
 
 ;Takes an operator as its input
 ;It then matches up the operator with the closest operator in Scheme
 (define M_Bool
-  (lambda (op)
+  (lambda (op state)
     (cond
       ((null? op) '())
       ((eq? op '+) +)
@@ -125,7 +128,8 @@
       ((eq? op '||) (lambda (a b) (or  a b)))
       ((eq? op '!) not)
       ((number? op) op)
-      (else (error "Unidentified operator")))))
+      ;(else (error "Unidentified operator"))))) ;handle the error somewhere else
+      (else (M_val_expr state op)))))
 
 ;There is no != in Scheme so Imma make my own
 (define !=
