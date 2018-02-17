@@ -19,20 +19,15 @@
   (lambda (file_name)
     (Mstate.statement (parser file_name) '(()())  )))
 
-
-(define stateInit
-  (lambda ()
-    ('())))
-
 (define Mstate.statement
   (lambda (tree state)
     (cond
       ((null? tree) state)
       ((equal? (firststatement tree) 'return) (M_Bool (cadar tree)))
-      ((eq? (firststatement tree) 'var) (dovarstuff))
+      ((eq? (firststatement tree) 'var) (Mstate.declare (car tree) state))
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
-      ((eq? (firststatement tree) '=) (doassignmentstuff))
+      ((eq? (firststatement tree) '=) (Mstate.assign (car tree)))
       (else (error)))))
 
 (define Mstate.return
@@ -59,19 +54,25 @@
   (lambda (s state)
     (cond
       ((null? s) state)
-      ((eq? operator) 'dosomething))))
+      (else (assign (car s) (cdr s) state)))))
+
+(define Mstate.declare
+  (lambda (d state)
+    (cond
+      ((null? d) state)
+      (else (declare (car d) (cdr d))))))
 
 (define declare
   (lambda (var state)
     (cond
-      ((eq? (stateGet var) ('itemDoesNotExist)) (stateAdd var state))
+      ((eq? (stateGet var state) ('itemDoesNotExist)) (stateAdd var state))
       (else ((stateRemove var state) (stateAdd var state))))))
 
 (define assign
   (lambda (var value state)
     (cond
       ((null? state) 'noStateException)
-      ((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredExcept)
+      ((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
       (else ((stateRemove var state) (stateAdd var value state))))))
 
 (define firststatement caar)
@@ -107,10 +108,6 @@
       ((eq? a 'false) #f)
       (else (stateGet a state)))))
 
-(define Mstate.declare
-  (lambda (varname state)
-    ((stateRemove varname state) (stateAdd varname 'undefined state))))
-
 ;Takes an operator as its input
 ;It then matches up the operator with the closest operator in Scheme
 (define M_Bool
@@ -139,4 +136,4 @@
   (lambda (x y)
     (not (= x y))))
 
-(interpret "tests1/ATest")
+(interpret "tests1/assignTest.lmao")
