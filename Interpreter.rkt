@@ -19,19 +19,20 @@
   (lambda (file_name)
     (Mstate.statement (parser file_name) '(()())  )))
 
-(define stateInit
-  (lambda ()
-    ('())))
-
 (define Mstate.statement
   (lambda (tree state)
     (cond
       ((null? tree) state)
+<<<<<<< HEAD
       ((equal? (firststatement tree) 'return) (M_Bool (cadar tree) state))
       ;((eq? (firststatement tree) 'var) (dovarstuff))
+=======
+      ((equal? (firststatement tree) 'return) (M_Bool (cadar tree)))
+      ((eq? (firststatement tree) 'var) (Mstate.declare (car tree) state))
+>>>>>>> 0bcd5bc2cbebd666fbf1ae16ef66edf45ae83659
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
-      ;((eq? (firststatement tree) '=) (doassignmentstuff))
+      ((eq? (firststatement tree) '=) (Mstate.assign (car tree)))
       (else (error)))))
 
 (define Mstate.return
@@ -58,8 +59,31 @@
   (lambda (s state)
     (cond
       ((null? s) state)
+<<<<<<< HEAD
       ((eq? operator
     )))))
+=======
+      (else (assign (car s) (cdr s) state)))))
+
+(define Mstate.declare
+  (lambda (d state)
+    (cond
+      ((null? d) state)
+      (else (declare (car d) (cdr d))))))
+
+(define declare
+  (lambda (var state)
+    (cond
+      ((eq? (stateGet var state) ('itemDoesNotExist)) (stateAdd var state))
+      (else ((stateRemove var state) (stateAdd var state))))))
+
+(define assign
+  (lambda (var value state)
+    (cond
+      ((null? state) 'noStateException)
+      ((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
+      (else ((stateRemove var state) (stateAdd var value state))))))
+>>>>>>> 0bcd5bc2cbebd666fbf1ae16ef66edf45ae83659
 
 (define firststatement caar)
 (define operator car)
@@ -80,6 +104,7 @@
 (define stateGet
   (lambda (item state)
     (cond
+      ((null? state) 'itemDoesNotExist)
       ((eq? (caar state) item) (cadr state))
       ((null? (cdr state)) error)
       (else (stateGet item (cdr state))))))
@@ -93,6 +118,7 @@
       ((eq? a 'false) #f)
       (else (stateGet a state)))))
 
+<<<<<<< HEAD
 (define Mstate.declare
   (lambda (varname state)
     ((stateRemove varname state) (stateAdd varname 'undefined state))))
@@ -107,6 +133,8 @@
       (else 'undefined))))
       
 
+=======
+>>>>>>> 0bcd5bc2cbebd666fbf1ae16ef66edf45ae83659
 ;Takes an operator as its input
 ;It then matches up the operator with the closest operator in Scheme
 (define M_Bool
@@ -136,4 +164,4 @@
   (lambda (x y)
     (not (= x y))))
 
-
+(interpret "tests1/assignTest.lmao")
