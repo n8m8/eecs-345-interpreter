@@ -54,8 +54,16 @@
   (lambda (s state)
     (cond
       ((null? s) state)
-      ((eq? operator
-    ))
+      ((eq? operator) 'dosomething))))
+
+
+(define assign
+  (lambda (var value state)
+    (cond
+      ((null? state) 'noStateException)
+      ((eq? (stateGet var state) 'itemDoesNotExist) (stateAdd var value state))
+      ((!= (stateGet var state) 'itemDoesNotExist) ((stateRemove var state) (stateAdd var value state)))
+      )))
 
 (define operator car)
       
@@ -79,6 +87,7 @@
 (define stateGet
   (lambda (item state)
     (cond
+      ((null? state) 'itemDoesNotExist)
       ((eq? (caar state) item) (cadr state))
       ((null? (cdr state)) error)
       (else (stateGet item (cdr state))))))
