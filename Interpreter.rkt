@@ -19,6 +19,46 @@
   (lambda ()
     ('())))
 
+(define Mstate.statement
+  (lambda (tree state)
+    (cond
+      ((null? tree) state)
+      ((eq? (firststatement tree) 'return) (doreturnstuff))
+      ((eq? (firststatement tree) 'var) (dovarstuff))
+      ((eq? (firststatement tree) 'if) (doifstuff))
+      ((eq? (firststatement tree) 'while) (dowhilestuff))
+      ((eq? (firststatement tree) '=) (doassignmentstuff))
+      (else (error)))))
+
+(define Mstate.return
+  (lambda (s state)
+    'notimplementedException
+    ))
+
+(define Mstate.init
+  (lambda (s state)
+    'notimplementedException
+    ))
+
+(define Mstate.if
+  (lambda (s state)
+    'notimplementedException
+    ))
+
+(define Mstate.while
+  (lambda (s state)
+    'notimplementedException
+    ))
+
+(define Mstate.assign
+  (lambda (s state)
+    'notimplementedException
+    ))
+
+(define firststatement
+  (lambda (l)
+    car l))
+
 (define stateAdd
   (lambda (item value state)
     (cond
@@ -47,3 +87,9 @@
       ((eq? a 'true) #t)
       ((eq? a 'false) #f)
       (else (stateGet a state)))))
+
+(define Mstate.declare
+  (lambda (varname state)
+    ((stateRemove varname state) (stateAdd varname 'undefined state))))
+
+
