@@ -19,6 +19,7 @@
   (lambda (file_name)
     (Mstate.statement (parser file_name) '(()())  )))
 
+
 (define stateInit
   (lambda ()
     ('())))
@@ -28,10 +29,10 @@
     (cond
       ((null? tree) state)
       ((equal? (firststatement tree) 'return) (M_Bool (cadar tree)))
-      ;((eq? (firststatement tree) 'var) (dovarstuff))
+      ((eq? (firststatement tree) 'var) (dovarstuff))
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
-      ;((eq? (firststatement tree) '=) (doassignmentstuff))
+      ((eq? (firststatement tree) '=) (doassignmentstuff))
       (else (error)))))
 
 (define Mstate.return
@@ -60,24 +61,21 @@
       ((null? s) state)
       ((eq? operator) 'dosomething))))
 
+(define declare
+  (lambda (var state)
+    (cond
+      ((eq? (stateGet var) ('itemDoesNotExist)) (stateAdd var state))
+      (else ((stateRemove var state) (stateAdd var state))))))
 
 (define assign
   (lambda (var value state)
     (cond
       ((null? state) 'noStateException)
-      ((eq? (stateGet var state) 'itemDoesNotExist) (stateAdd var value state))
-      ((!= (stateGet var state) 'itemDoesNotExist) ((stateRemove var state) (stateAdd var value state)))
-      )))
+      ((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredExcept)
+      (else ((stateRemove var state) (stateAdd var value state))))))
 
-<<<<<<< HEAD
 (define firststatement caar)
-=======
 (define operator car)
-      
-(define firststatement
-  (lambda (l)
-    car l))
->>>>>>> 9e839dc8954501d8de6e5a95654bd726449febec
 
 (define stateAdd
   (lambda (item value state)
@@ -141,4 +139,4 @@
   (lambda (x y)
     (not (= x y))))
 
-
+(interpret "tests1/ATest")
