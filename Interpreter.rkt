@@ -8,12 +8,16 @@
 (require "mathOperators.rkt")
 (require "comparisonOperators.rkt")
 (require "assignDeclare.rkt")
+(require "simpleParser.scm")
 
 ; Alex Marshall awm48
 ; Nathan Walls nfw10
 ; Anna Burkhart alb171
 ; Main Interpreter
 
+(define interpret
+  (lambda (file_name)
+    (Mstate.statement (parser file_name) '(()())  )))
 
 (define stateInit
   (lambda ()
@@ -23,11 +27,11 @@
   (lambda (tree state)
     (cond
       ((null? tree) state)
-      ((eq? (firststatement tree) 'return) (doreturnstuff))
-      ((eq? (firststatement tree) 'var) (dovarstuff))
-      ((eq? (firststatement tree) 'if) (doifstuff))
-      ((eq? (firststatement tree) 'while) (dowhilestuff))
-      ((eq? (firststatement tree) '=) (doassignmentstuff))
+      ((equal? (firststatement tree) 'return) (M_Bool (cadar tree)))
+      ;((eq? (firststatement tree) 'var) (dovarstuff))
+      ;((eq? (firststatement tree) 'if) (doifstuff))
+      ;((eq? (firststatement tree) 'while) (dowhilestuff))
+      ;((eq? (firststatement tree) '=) (doassignmentstuff))
       (else (error)))))
 
 (define Mstate.return
@@ -55,9 +59,7 @@
     'notimplementedException
     ))
 
-(define firststatement
-  (lambda (l)
-    car l))
+(define firststatement caar)
 
 (define stateAdd
   (lambda (item value state)
@@ -91,5 +93,33 @@
 (define Mstate.declare
   (lambda (varname state)
     ((stateRemove varname state) (stateAdd varname 'undefined state))))
+
+;Takes an operator as its input
+;It then matches up the operator with the closest operator in Scheme
+(define M_Bool
+  (lambda (op)
+    (cond
+      ((null? op) '())
+      ((eq? op '+) +)
+      ((eq? op '-) -)
+      ((eq? op '*) *)
+      ((eq? op '/) quotient)
+      ((eq? op '%) remainder)
+      ((eq? op '==) =)
+      ((eq? op '!=) !=)
+      ((eq? op '<) <)
+      ((eq? op '>) >)
+      ((eq? op '<=) <=)
+      ((eq? op '>=) >=)
+      ((eq? op '&&) (lambda (a b) (and a b)))
+      ((eq? op '||) (lambda (a b) (or  a b)))
+      ((eq? op '!) not)
+      ((number? op) op)
+      (else (error "Unidentified operator")))))
+
+;There is no != in Scheme so Imma make my own
+(define !=
+  (lambda (x y)
+    (not (= x y))))
 
 
