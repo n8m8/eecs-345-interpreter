@@ -21,41 +21,45 @@
 
 ;====================================================
 
+; Input is the return parse tree from simpleParser and the intial state is '(() ()) so that our binding pairs will
+; be stored in two lists 
 (define interpret
   (lambda (file_name)
-    (Mstate.statement (parser file_name) '(()())  )))
+    (statement (parser file_name) '(()())  )))
 
-(define Mstate.statement
+; Check what kind of statement and interpret accordingly (ex. return, var, if, while, or =)
+(define statement
   (lambda (tree state)
     (cond
       ((null? tree) state)
-      ((equal? (firststatement tree) 'return) (M_Bool (cadar tree) state))
-      ((equal? (firststatement tree) 'return) (M_Bool (cadar tree)))
-      ((eq? (firststatement tree) 'var) (Mstate.declare (car tree) state))
+      ((equal? (firststatement tree) 'return) (return (cadar tree) state))
+      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state)))
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
-      ((eq? (firststatement tree) '=) (Mstate.assign (car tree)))
+      ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (car tree) state)))
       (else (error)))))
 
-(define Mstate.return
-  (lambda (s state)
-    'notimplementedException
-    ))
 
-(define Mstate.init
-  (lambda (s state)
-    'notimplementedException
-    ))
+; ***Took out methods that had no function (we can add them back if needed)***
 
-(define Mstate.if
-  (lambda (s state)
-    'notimplementedException
-    ))
 
-(define Mstate.while
-  (lambda (s state)
-    'notimplementedException
-    ))
+; If we reach this line we must at least have (var) so first condition checks for "var" + "number/letter"
+; and returns the state if the "number/letter" is null, and otherwise calls declare on "var" + "number/letter"
+(define declare
+  (lambda (declaration state)
+    (cond
+      ((null? (cdr declaration)) state)
+      (else (cons (cons (car (cdr declaration)) (car state)) (cdr state))))))
+
+;Check if the variable is part of the state.
+;If it is part of the state, remove it and its value
+;Re-add the variable and new value to the state
+(define assign
+  (lambda (assignment state)
+    (cond
+      ((null? state) 'VariableNotDeclared)
+      ((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException) 
+      (else ((stateRemove var state) (stateAdd var value state))))))
 
 (define Mstate.assign
   (lambda (s state)
@@ -63,25 +67,6 @@
       ((null? s) state)
       ((eq? operator))
       (else (assign (car s) (cdr s) state)))))
-
-(define Mstate.declare
-  (lambda (d state)
-    (cond
-      ((null? d) state)
-      (else (declare (car d) (cdr d))))))
-
-(define declare
-  (lambda (var state)
-    (cond
-      ((eq? (stateGet var state) ('itemDoesNotExist)) (stateAdd var state))
-      (else ((stateRemove var state) (stateAdd var state))))))
-
-(define assign
-  (lambda (var value state)
-    (cond
-      ((null? state) 'noStateException)
-      ((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
-      (else ((stateRemove var state) (stateAdd var value state))))))
 
 (define stateAdd
   (lambda (item value state)
@@ -115,19 +100,19 @@
 
 ;Evaluates mathmatical expressions
 ;The order of operations is +,-,*,/,%
-(define M_val_expr
+(define expression
   (lambda (state expr)
     (cond
       ((null? expr) '())
       ((number? expr) expr)
-      ((eq? '+ (car expr)) (+ (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr))))
+      ((eq? '+ (car expr)) (+ (expression state (cadr expr)) (expression (caddr expr))))
       ((eq? '- (car expr))
        (if (isNegativeNumber expr)
-           (- 0 (M_val_expr state (cadr expr)))
-           (- (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr)))))
-      ((eq? '* (car expr)) (* (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr))))
-      ((eq? '/ (car expr)) (quotient (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr))))
-      ((eq? '% (car expr)) (remainder (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr))))
+           (- 0 (expression state (cadr expr)))
+           (- (expression state (cadr expr)) (expression state (caddr expr)))))
+      ((eq? '* (car expr)) (* (expression state (cadr expr)) (expression state (caddr expr))))
+      ((eq? '/ (car expr)) (quotient (expression state (cadr expr)) (expression state (caddr expr))))
+      ((eq? '% (car expr)) (remainder (expression state (cadr expr)) (expression state (caddr expr))))
       (else (error 'badoperation "Unknown operator")))))
 
 (define isNegativeNumber
@@ -135,9 +120,9 @@
     (null? (cddr expr))))
 
 
-;Takes an operator as its input
-;It then matches up the operator with the closest operator in Scheme
-(define M_Bool
+; Takes an operator as its input
+; It then matches up the operator with the closest operator in Scheme
+(define return
   (lambda (op state)
     (cond
       ((null? op) '())
@@ -156,8 +141,7 @@
       ((eq? op '||) (lambda (a b) (or  a b)))
       ((eq? op '!) not)
       ((number? op) op)
-      ;(else (error "Unidentified operator"))))) ;handle the error somewhere else
-      (else (M_val_expr state op)))))
+      (else (expression state op)))))
 
 ;There is no != in Scheme so Imma make my own
 (define !=
