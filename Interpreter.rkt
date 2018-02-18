@@ -1,19 +1,25 @@
 #lang racket
 
+; Alex Marshall awm48
+; Nathan Walls nfw10
+; Anna Burkhart alb171
+; EECS 345 - Main Interpreter Part I
+
 ; We want to use multiple files, at least in development, to make VCS easier
 ; To do this, we require racket/include in this main Interpreter.rkt file
 ; Every other .rkt file we want to include should add '(require "otherfile.rkt)'
 ; In the other .rkt file, you must have '(provide myfunctionname)' for each of the functions in that file
-(require racket/include)
-(require "mathOperators.rkt")
-(require "comparisonOperators.rkt")
-(require "assignDeclare.rkt")
+
 (require "simpleParser.scm")
 
-; Alex Marshall awm48
-; Nathan Walls nfw10
-; Anna Burkhart alb171
-; Main Interpreter
+;====================================================
+; Makes more code more readable and was easier to add but technically could be omitted and could just call
+; explicitly in every instance (ex. (caar x))
+
+(define firststatement caar)
+(define operator car)
+
+;====================================================
 
 (define interpret
   (lambda (file_name)
@@ -77,9 +83,6 @@
       ((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
       (else ((stateRemove var state) (stateAdd var value state))))))
 
-(define firststatement caar)
-(define operator car)
-
 (define stateAdd
   (lambda (item value state)
     (cond
@@ -116,9 +119,20 @@
   (lambda (state expr)
     (cond
       ((null? expr) '())
-      ((number? (car expr)) expr)
-      ((eq? (car expr) '+) (+ (M_val_expr state (cdr expr)) (M_val_expr state (cddr expr))))
-      (else 'undefined))))
+      ((number? expr) expr)
+      ((eq? '+ (car expr)) (+ (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr))))
+      ((eq? '- (car expr))
+       (if (isNegativeNumber expr)
+           (- 0 (M_val_expr state (cadr expr)))
+           (- (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr)))))
+      ((eq? '* (car expr)) (* (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr))))
+      ((eq? '/ (car expr)) (quotient (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr))))
+      ((eq? '% (car expr)) (remainder (M_val_expr state (cadr expr)) (M_val_expr state (caddr expr))))
+      (else (error 'badoperation "Unknown operator")))))
+
+(define isNegativeNumber
+  (lambda (expr)
+    (null? (cddr expr))))
 
 
 ;Takes an operator as its input
@@ -150,4 +164,4 @@
   (lambda (x y)
     (not (= x y))))
 
-(interpret "tests1/assignTest.lmao")
+;(interpret "tests1/assignTest.lmao")
