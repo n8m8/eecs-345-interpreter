@@ -68,7 +68,7 @@
     (cond
       ((null? ifstmt) state)
       ((return (car ifstmt) state)(statement (cons (cadr ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((null? (car (cddr ifstmt))) state) ;else: do nothing
+      ((null? (cddr ifstmt)) state) ;else: do nothing
       (else (statement (cons (car (cddr ifstmt)) '()) state)))))
                       
 
@@ -164,19 +164,19 @@
       ((null? op) '())
       ((number? (stateGet op state)) (stateGet op state))
       ((eq? (car op) '+) (+ (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '-) (- (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '*) (* (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '/) (quotient (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '%) (remainder (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '==) (eq? (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '!=) (!= (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '<) (< (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '>) (> (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '-) (- (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '*) (* (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '/) (quotient (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '%) (remainder (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '==) (eq? (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '!=) (!= (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '<) (< (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '>) (> (return (cadr op) state) (return (caddr op) state)))
       ((eq? (car op) '<=) (<= (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '>=) (>= (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '&&) (and (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '||) (or (return (cadr op) state) (return (caddr op) state)))
-      ((eq? op '!) (not (return (cadr op) state)))
+      ((eq? (car op) '>=) (>= (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '&&) (and (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '||) (or (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '!) (not (return (cadr op) state)))
       ((number? op) op)
       (else (expression op state)))))
 
