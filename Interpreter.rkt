@@ -190,5 +190,5 @@
       ((eq? x (car lis)) #t)
       (else (member*? x (cdr lis))))))
 
-;(interpret "tests1/5.txt")
+;(interpret "tests/5.txt")
 ;(stateAdd 'z 2 '((x) (5)))
