@@ -139,6 +139,7 @@
   (lambda (expr state)
     (cond
       ((null? expr) '())
+      ;Add error check for variables not in the stack
       ((number? expr) expr)
       ((member*? expr state) (stateGet expr state)) ; need to check if it's a variable right here
       ((eq? '+ (operator expr)) (+ (expression (operand1 expr) state) (expression (operand2 expr) state)))
