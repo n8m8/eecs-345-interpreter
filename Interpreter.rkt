@@ -24,7 +24,7 @@
 ;====================================================
 
 ; Input is the return parse tree from simpleParser and the intial state is '(() ()) so that our binding pairs will
-; be stored in two lists 
+; be stored in two lists
 (define interpret
   (lambda (file_name)
     (statement (parser file_name) '(()())  )))
@@ -60,10 +60,15 @@
   (lambda (assignment state)
     (cond
       ((null? state) 'VariableNotDeclared)
+<<<<<<< HEAD
       ((member*? (car (cdr assignment)) state) ('Dosomething))
       ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException) 
+=======
+      ((member*? (car (cdr assignment)) state) ((stateRemove (car (cdr assignment)) state) (stateAdd (car (cdr assignment)) (cdr (cdr assignment)) state)))
+      ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
+>>>>>>> 4ca4f3f764f462aa67e9a07a01bf5416f452fe4d
       ;(else ((stateRemove var state) (stateAdd var value state))))))
-      (else 'error))))
+      (else 'triedToAssignNotANumber))))
 
 (define Mstate.assign
   (lambda (s state)
@@ -77,11 +82,14 @@
     (cond
       ((null? item) error)
       ((null? value) error)
-      (else (cons (list item value) (state))))))
+      ((eq? (car state) '()) ((cons '() item) (cons '() value)))
+      ((eq? (stateRemove item state) 'itemDoesNotExist) ((list (car state) item) (list (car (cdr state)) value )))
+      (else (state)))))
 
 (define stateRemove
   (lambda (item state)
     (cond
+      ((null? (cadr state)) 'itemDoesNotExist)
       ((eq? (caar state) item) (cdr state))
       (else (stateRemove item (cdr state))))))
 
@@ -109,8 +117,14 @@
     (cond
       ((null? expr) '())
       ((number? expr) expr)
+<<<<<<< HEAD
       ((eq? '+ (operator expr)) (+ (expression state (operand1 expr)) (expression state (operand2 expr))))
       ((eq? '- (operator expr))
+=======
+      ;((null? (cdr expr)) (stateGet expr state))
+      ((eq? '+ (car expr)) (+ (expression state (cadr expr)) (expression (caddr expr))))
+      ((eq? '- (car expr))
+>>>>>>> 4ca4f3f764f462aa67e9a07a01bf5416f452fe4d
        (if (isNegativeNumber expr)
            (- 0 (expression state (operand1 expr)))
            (- (expression state (operand1 expr)) (expression state (operand2 expr)))))
@@ -146,6 +160,7 @@
       ((eq? op '!) not)
       
       ((number? op) op)
+      ((number? (stateGet op state)) (stateGet op state))
       (else (expression state op)))))
 
 ;There is no != in Scheme so Imma make my own
@@ -162,4 +177,4 @@
       ((eq? x (car lis)) #t)
       (else (member*? x (cdr lis))))))
 
-;(interpret "tests1/assignTest.lmao")
+(interpret "tests1/assignTest.lmao")
