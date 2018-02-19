@@ -35,6 +35,7 @@
     (cond
       ((null? tree) state)
       ((equal? (firststatement tree) 'return) (return (cadar tree) state))
+      ((and (eq? (firststatement tree) 'var) (not (null? (cddr (car tree))))) (statement (cdr tree) (assign (cdr (car tree)) (declare (list 'var (cadar tree)) state))))
       ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state)))
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
@@ -89,12 +90,12 @@
       (else (list (cons (car (car state)) (car (stateRemove var (cons (cdr (car state)) (cdr (cdr state)))))) (cons (car (cdr state)) (cdr (stateRemove var (cons (cdr (car state)) (cdr state))))))))))
 
 (define stateGet
-  (lambda (item state)
+  (lambda (var state)
     (cond
       ((null? state) 'itemDoesNotExist)
-      ((eq? (caar state) item) (car (cadr state)))
+      ((eq? (caar state) var) (car (cdr state)))
       ((null? (cdr state)) error)
-      (else (stateGet item (cdr state))))))
+      (else (stateGet var (cdr state))))))
 
 (define Mvalue.atom
   (lambda (a state)

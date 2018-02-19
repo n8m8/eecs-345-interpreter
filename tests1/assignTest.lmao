@@ -1,3 +1,2 @@
-var x;
-x = 5 + 3;
+var x = (5 * 7 - 3) / 2;
 return x;
