@@ -37,9 +37,19 @@
       ((equal? (firststatement tree) 'return) (return (cadar tree) state))
       ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state)))
       ((eq? (firststatement tree) 'if) (statement (cdr tree) (ifstatement (cdr (car tree)) state)))  ;(cdr (car tree)) returns everything after 'if
-      ;((eq? (firststatement tree) 'while) (dowhilestuff))
+      ((eq? (firststatement tree) 'while) (statement (cdr tree) (while (cdr (car tree)))))
       ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (cdr (car tree)) state))) ;(cdr (car tree)) gets rid of = sign because it's not important
       (else (error)))))
+
+(define while
+  (lambda (stmnt state)
+    (cond
+      ((null? (getWhileCondition stmnt)) 'conditionCannotBeNull)
+      ((eq? (return (getWhileCondition stmnt) state) #f) state)
+      (else (while stmnt (statement stmnt state))))))
+
+(define getWhileCondition (lambda (s) (car (cdr s))))
+(define getWhileAction (lambda (s) (car (cdr (cdr s)))))
 
 ; If we reach this line we must at least have (var) so first condition checks for "var" + "number/letter"
 ; and returns the state if the "number/letter" is null, and otherwise calls declare on "var" + "number/letter"
@@ -70,7 +80,7 @@
       ((return (car ifstmt) state)(statement (cons (cadr ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
       ((null? (cddr ifstmt)) state) ;else: do nothing
       (else (statement (cons (car (cddr ifstmt)) '()) state)))))
-                      
+
 
 (define Mstate.assign
   (lambda (s state)
@@ -195,5 +205,5 @@
       ((eq? x (car lis)) #t)
       (else (member*? x (cdr lis))))))
 
-;(interpret "tests/5.txt")
+;(interpret "tests/19.txt")
 ;(stateAdd 'z 2 '((x) (5)))
