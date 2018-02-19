@@ -118,7 +118,7 @@
       ((null? (car state)) 'stateWasEmpty)
       ((eq? (caar state) var) (caar (cdr state)))
       ((null? (cdr state)) error)
-      (else (stateGet var (cons (cdr (car state)) (cons '() (cdr (cdr state))))))))) ; call recursively removing item from first and second lists of state
+      (else (stateGet var (list (cons (cdr (car state)) '()) (cons (cdr (cdr state)) '()))))))) ; call recursively removing item from first and second lists of state
 
 (define Mvalue.atom
   (lambda (a state)
@@ -191,4 +191,4 @@
       (else (member*? x (cdr lis))))))
 
 ;(interpret "tests1/5.txt")
-(stateAdd 'z 2 '((x) (5)))
+;(stateAdd 'z 2 '((x) (5)))
