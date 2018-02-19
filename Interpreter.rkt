@@ -36,7 +36,7 @@
       ((null? tree) state)
       ((equal? (firststatement tree) 'return) (return (cadar tree) state))
       ;((and (eq? (firststatement tree) 'var) (not (null? (cddr (car tree))))) (statement (cdr tree) (assign (cdr (car tree)) (declare (list 'var (cadar tree)) state))))
-      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (cdr (car tree)) state))) ;(cdr (car tree)) returns everything after 'var
+      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state))) ;(cdr (car tree)) returns everything after 'var
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
       ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (cdr (car tree)) state))) ;(cdr (car tree)) gets rid of = sign because it's not important
@@ -52,9 +52,10 @@
   (lambda (declaration state)
     (cond
       ((null? state) 'StateUndeclared) ;should never really be reached but here for safety
-      ((and (null? (car state)) (null? (cdr declaration))) (cons (cons (car declaration) '()) (cons '(()) '()))) ;takes care of the case of no variables in the state
-      ((not (null? (cadr declaration))) (list (cons (car declaration) '()) (cons (expression (cadr declaration) state) '() )))
-      (else (cons (cons (car (cdr declaration)) (car state)) (cons '() (cdr state)))))))
+      ((null? (cdr declaration)) state)
+      ;((and (null? (car state)) (null? (cdr declaration))) (cons (cons (car declaration) '()) (cons '(()) '()))) ;takes care of the case of no variables in the state
+      ;((not (null? (cadr declaration))) (list (cons (car declaration) '()) (cons (expression (cadr declaration) state) '() )))
+      (else (cons (cons (car (cdr declaration)) (car state)) (cdr state))))))
 
 ;Check if the variable is part of the state.
 ;If it is part of the state, remove it and its value
@@ -171,5 +172,5 @@
       ((eq? x (car lis)) #t)
       (else (member*? x (cdr lis))))))
 
-;(interpret "tests1/5.txt")
-(stateRemove 'x '((x y) (5 10)))
+;(interpret "tests/5.txt")
+;(stateRemove 'x '((x y) (5 10)))
