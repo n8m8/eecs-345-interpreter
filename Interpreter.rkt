@@ -35,7 +35,7 @@
     (cond
       ((null? tree) state)
       ((equal? (firststatement tree) 'return) (return (cadar tree) state))
-      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (cdr (car tree)) state))) ;(cdr (car tree)) returns everything after 'var
+      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state))) ;(cdr (car tree)) returns everything after 'var
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
       ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (cdr (car tree)) state))) ;(cdr (car tree)) gets rid of = sign because it's not important
@@ -112,7 +112,7 @@
       ((null? (car state)) 'stateWasEmpty)
       ((eq? (caar state) var) (caar (cdr state)))
       ((null? (cdr state)) error)
-      (else (stateGet var (list (cons (cdr (car state)) '()) (cons (cdr (cdr state)) '()))))))) ; call recursively removing item from first and second lists of state
+      (else (stateGet var (list (cdr (car state)) (cdr (cadr state)))))))) ; call recursively removing item from first and second lists of state
 
 (define Mvalue.atom
   (lambda (a state)
