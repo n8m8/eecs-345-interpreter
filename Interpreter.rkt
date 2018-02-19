@@ -35,16 +35,11 @@
     (cond
       ((null? tree) state)
       ((equal? (firststatement tree) 'return) (return (cadar tree) state))
-      ;((and (eq? (firststatement tree) 'var) (not (null? (cddr (car tree))))) (statement (cdr tree) (assign (cdr (car tree)) (declare (list 'var (cadar tree)) state))))
       ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (cdr (car tree)) state))) ;(cdr (car tree)) returns everything after 'var
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
       ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (cdr (car tree)) state))) ;(cdr (car tree)) gets rid of = sign because it's not important
       (else (error)))))
-
-
-; ***Took out methods that had no function (we can add them back if needed)***
-
 
 ; If we reach this line we must at least have (var) so first condition checks for "var" + "number/letter"
 ; and returns the state if the "number/letter" is null, and otherwise calls declare on "var" + "number/letter"
@@ -52,9 +47,8 @@
   (lambda (declaration state)
     (cond
       ((null? state) 'StateUndeclared) ;should never really be reached but here for safety
-      ((and (null? (car state)) (null? (cdr declaration))) (cons (cons (car declaration) '()) (cons '(()) '()))) ;takes care of the case of no variables in the state
-      ((not (null? (cadr declaration))) (list (cons (car declaration) '()) (cons (expression (cadr declaration) state) '() )))
-      (else (cons (cons (car (cdr declaration)) (car state)) (cons '() (cdr state)))))))
+      ((null? (cddr declaration)) (list (cons (car (cdr declaration)) (car state)) (cons '() (car (cdr state)))))
+      (else (assign (cdr declaration) state)))))
 
 ;Check if the variable is part of the state.
 ;If it is part of the state, remove it and its value
