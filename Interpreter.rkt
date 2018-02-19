@@ -38,7 +38,7 @@
       ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state)))
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
-      ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (car tree) state)))
+      ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (cdr (car tree)) state))) ;(cdr (car tree)) gets rid of = sign because it's not important
       (else (error)))))
 
 
@@ -51,7 +51,7 @@
   (lambda (declaration state)
     (cond
       ((null? (cdr declaration)) state)
-      (else (cons (cons (car (cdr declaration)) (car state)) (cdr state))))))
+      (else (cons (cons (car (cdr declaration)) (car state)) (cons '() (cdr state)))))))
 
 ;Check if the variable is part of the state.
 ;If it is part of the state, remove it and its value
@@ -60,7 +60,7 @@
   (lambda (assignment state)
     (cond
       ((null? state) 'VariableNotDeclared)
-      ((member*? (car (cdr assignment)) state) ((stateRemove (car (cdr assignment)) state) (stateAdd (car (cdr assignment)) (cdr (cdr assignment)) state)))
+      ((member*? (car assignment) state) (stateAdd (car assignment) (car (cdr assignment)) (stateRemove (car assignment) state)))
       ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
       ;(else ((stateRemove var state) (stateAdd var value state))))))
       (else 'triedToAssignNotANumber))))
@@ -77,22 +77,22 @@
     (cond
       ((null? item) error)
       ((null? value) error)
-      ((eq? (car state) '()) ((cons '() item) (cons '() value)))
-      ((eq? (stateRemove item state) 'itemDoesNotExist) ((list (car state) item) (list (car (cdr state)) value )))
+      ((eq? (car state) '()) (list (list item) (list value)))
+      ((eq? (stateRemove item state) state) (list (cons (car state) item) (cons (cdr state) value )))
       (else (state)))))
 
 (define stateRemove
-  (lambda (item state)
+  (lambda (var state)
     (cond
-      ((null? (cadr state)) 'itemDoesNotExist)
-      ((eq? (caar state) item) (cdr state))
-      (else (stateRemove item (cdr state))))))
+      ((null? (car state)) state)
+      ((eq? (caar state) var) (list (cdr (car state)) (cdr (cdr state))))
+      (else (list (cons (car (car state)) (car (stateRemove var (cons (cdr (car state)) (cdr (cdr state)))))) (cons (car (cdr state)) (cdr (stateRemove var (cons (cdr (car state)) (cdr state))))))))))
 
 (define stateGet
   (lambda (item state)
     (cond
       ((null? state) 'itemDoesNotExist)
-      ((eq? (caar state) item) (cadr state))
+      ((eq? (caar state) item) (car (cadr state)))
       ((null? (cdr state)) error)
       (else (stateGet item (cdr state))))))
 
@@ -147,7 +147,6 @@
       ((eq? op '&&) (lambda (a b) (and a b)))
       ((eq? op '||) (lambda (a b) (or  a b)))
       ((eq? op '!) not)
-      
       ((number? op) op)
       ((number? (stateGet op state)) (stateGet op state))
       (else (expression state op)))))
