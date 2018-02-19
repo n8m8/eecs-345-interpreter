@@ -18,6 +18,8 @@
 
 (define firststatement caar)
 (define operator car)
+(define operand1 cadr)
+(define operand2 caddr)
 
 ;====================================================
 
@@ -58,7 +60,7 @@
   (lambda (assignment state)
     (cond
       ((null? state) 'VariableNotDeclared)
-      ((member*? (car (cdr (cdr assignment))) state) ('Dosomething))
+      ((member*? (car (cdr assignment)) state) ('Dosomething))
       ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException) 
       ;(else ((stateRemove var state) (stateAdd var value state))))))
       (else 'error))))
@@ -107,14 +109,14 @@
     (cond
       ((null? expr) '())
       ((number? expr) expr)
-      ((eq? '+ (car expr)) (+ (expression state (cadr expr)) (expression (caddr expr))))
-      ((eq? '- (car expr))
+      ((eq? '+ (operator expr)) (+ (expression state (operand1 expr)) (expression state (operand2 expr))))
+      ((eq? '- (operator expr))
        (if (isNegativeNumber expr)
-           (- 0 (expression state (cadr expr)))
-           (- (expression state (cadr expr)) (expression state (caddr expr)))))
-      ((eq? '* (car expr)) (* (expression state (cadr expr)) (expression state (caddr expr))))
-      ((eq? '/ (car expr)) (quotient (expression state (cadr expr)) (expression state (caddr expr))))
-      ((eq? '% (car expr)) (remainder (expression state (cadr expr)) (expression state (caddr expr))))
+           (- 0 (expression state (operand1 expr)))
+           (- (expression state (operand1 expr)) (expression state (operand2 expr)))))
+      ((eq? '* (operator expr)) (* (expression state (operand1 expr)) (expression state (operand2 expr))))
+      ((eq? '/ (operator expr)) (quotient (expression state (operand1 expr)) (expression state (operand2 expr))))
+      ((eq? '% (operator expr)) (remainder (expression state (operand1 expr)) (expression state (operand2 expr))))
       (else (error 'badoperation "Unknown operator")))))
 
 (define isNegativeNumber
@@ -142,6 +144,7 @@
       ((eq? op '&&) (lambda (a b) (and a b)))
       ((eq? op '||) (lambda (a b) (or  a b)))
       ((eq? op '!) not)
+      
       ((number? op) op)
       (else (expression state op)))))
 
