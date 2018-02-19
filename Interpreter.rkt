@@ -81,16 +81,35 @@
       ((null? var) 'variableNameWasNull)
       ((null? state) 'stateWasNullException)
       ((null? (car state)) (list (list var) (list value)))
-      ((eq? (stateRemove var state) state) (list (cons (car state) var) (cons (cdr state) value )))
+      ((eq? (stateRemove var state) state) (list (append (getvarsfromstate state) var) (append (getvaluesfromstate state) value )))
       (else state))))
+
+(define getvarsfromstate
+  (lambda (state)
+    (cond
+      ((null? state) 'stateWasNull)
+      ((list? (car state)) (car state))
+      (else (cons (car state) '())))))
+
+
+(define getvaluesfromstate
+  (lambda (state)
+    (cond
+      ((null? state) 'stateWasNull)
+      ((list? (cadr state)) (cadr state))
+      (else (cons (cadr state) '())))))
 
 (define stateRemove
   (lambda (var state)
     (cond
       ((null? (car state)) state)
-      ((eq? (caar state) var) (list (cdr (car state)) (cdr (cdr state))))
+      ;((not (list? (caar state)))
+         ;(if (eq? (caar state) var)
+             ;'(() ())
+             ;state))
+      ((eq? (caar state) var) (list (cdr (car state)) (cdr (cadr state))))
       ((null? (cdar state)) state); then we're on the last item, it wasn't ==, so we return state
-      (else (list (cons (car (car state)) (car (stateRemove var (cons (cdr (car state)) (cdr (cdr state)))))) (cons (car (cdr state)) (cdr (stateRemove var (cons (cdr (car state)) (cdr (cdr state)))))))))))
+      (else (list (append (cons (car (car state)) '()) (car (stateRemove var (append (cons (cdr (car state)) '()) (cons (cdr (cadr state)) '()))))) (append (cons (car (cadr state)) '()) (cadr (stateRemove var (append (cons (cdr (car state)) '()) (cons (cdr (cadr state)) '()))))))))))
 
 (define stateGet
   (lambda (var state)
