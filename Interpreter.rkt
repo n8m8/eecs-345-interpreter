@@ -75,7 +75,7 @@
       ((null? var) 'variableNameWasNull)
       ((null? state) 'stateWasNullException)
       ((null? (car state)) (list (list var) (list value)))
-      ((not (member*? var state)) (list (append (getvarsfromstate state) var) (append (getvaluesfromstate state) value )))
+      ((not (member*? var state)) (list (cons var (car state)) (cons value (car (cdr state)))))
       (else state))))
 
 (define getvarsfromstate
