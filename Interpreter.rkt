@@ -60,13 +60,8 @@
   (lambda (assignment state)
     (cond
       ((null? state) 'VariableNotDeclared)
-<<<<<<< HEAD
-      ((member*? (car (cdr assignment)) state) ('Dosomething))
-      ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException) 
-=======
       ((member*? (car (cdr assignment)) state) ((stateRemove (car (cdr assignment)) state) (stateAdd (car (cdr assignment)) (cdr (cdr assignment)) state)))
       ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
->>>>>>> 4ca4f3f764f462aa67e9a07a01bf5416f452fe4d
       ;(else ((stateRemove var state) (stateAdd var value state))))))
       (else 'triedToAssignNotANumber))))
 
@@ -117,14 +112,8 @@
     (cond
       ((null? expr) '())
       ((number? expr) expr)
-<<<<<<< HEAD
       ((eq? '+ (operator expr)) (+ (expression state (operand1 expr)) (expression state (operand2 expr))))
       ((eq? '- (operator expr))
-=======
-      ;((null? (cdr expr)) (stateGet expr state))
-      ((eq? '+ (car expr)) (+ (expression state (cadr expr)) (expression (caddr expr))))
-      ((eq? '- (car expr))
->>>>>>> 4ca4f3f764f462aa67e9a07a01bf5416f452fe4d
        (if (isNegativeNumber expr)
            (- 0 (expression state (operand1 expr)))
            (- (expression state (operand1 expr)) (expression state (operand2 expr)))))
