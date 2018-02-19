@@ -58,8 +58,10 @@
   (lambda (assignment state)
     (cond
       ((null? state) 'VariableNotDeclared)
-      ((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException) 
-      (else ((stateRemove var state) (stateAdd var value state))))))
+      ((member*? (car (cdr (cdr assignment))) state) ('Dosomething))
+      ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException) 
+      ;(else ((stateRemove var state) (stateAdd var value state))))))
+      (else 'error))))
 
 (define Mstate.assign
   (lambda (s state)
@@ -147,5 +149,14 @@
 (define !=
   (lambda (x y)
     (not (= x y))))
+
+;member*? - returns true if x is in lis, where lis can contain sublists
+(define member*?
+  (lambda (x lis)
+    (cond
+      ((null? lis) #f)
+      ((pair? (car lis)) (or (member*? x (car lis)) (member*? x (cdr lis))))
+      ((eq? x (car lis)) #t)
+      (else (member*? x (cdr lis))))))
 
 ;(interpret "tests1/assignTest.lmao")
