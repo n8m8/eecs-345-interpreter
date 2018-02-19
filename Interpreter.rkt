@@ -78,18 +78,19 @@
 (define stateAdd
   (lambda (var value state)
     (cond
-      ((null? var) error)
-      ((null? state) error)
+      ((null? var) 'variableNameWasNull)
+      ((null? state) 'stateWasNullException)
       ((null? (car state)) (list (list var) (list value)))
       ((eq? (stateRemove var state) state) (list (cons (car state) var) (cons (cdr state) value )))
-      (else (state)))))
+      (else state))))
 
 (define stateRemove
   (lambda (var state)
     (cond
       ((null? (car state)) state)
       ((eq? (caar state) var) (list (cdr (car state)) (cdr (cdr state))))
-      (else (list (cons (car (car state)) (car (stateRemove var (cons (cdr (car state)) (cdr (cdr state)))))) (cons (car (cdr state)) (cdr (stateRemove var (cons (cdr (car state)) (cdr state))))))))))
+      ((null? (cdar state)) state); then we're on the last item, it wasn't ==, so we return state
+      (else (list (cons (car (car state)) (car (stateRemove var (cons (cdr (car state)) (cdr (cdr state)))))) (cons (car (cdr state)) (cdr (stateRemove var (cons (cdr (car state)) (cdr (cdr state)))))))))))
 
 (define stateGet
   (lambda (var state)
@@ -98,7 +99,7 @@
       ((null? (car state)) 'stateWasEmpty)
       ((eq? (caar state) var) (caar (cdr state)))
       ((null? (cdr state)) error)
-      (else (stateGet var (cdr state))))))
+      (else (stateGet var (cons (cdr (car state)) (cons '() (cdr (cdr state))))))))) ; call recursively removing item from first and second lists of state
 
 (define Mvalue.atom
   (lambda (a state)
@@ -116,6 +117,7 @@
     (cond
       ((null? expr) '())
       ((number? expr) expr)
+      ((member*? expr state) (stateGet expr state)) ; need to check if it's a variable right here
       ((eq? '+ (operator expr)) (+ (expression (operand1 expr) state) (expression (operand2 expr) state)))
       ((eq? '- (operator expr))
        (if (isNegativeNumber expr)
@@ -169,4 +171,5 @@
       ((eq? x (car lis)) #t)
       (else (member*? x (cdr lis))))))
 
-(interpret "tests1/2.txt")
+;(interpret "tests1/5.txt")
+(stateRemove 'x '((x y) (5 10)))
