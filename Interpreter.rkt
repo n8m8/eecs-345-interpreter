@@ -81,7 +81,7 @@
       ((null? var) 'variableNameWasNull)
       ((null? state) 'stateWasNullException)
       ((null? (car state)) (list (list var) (list value)))
-      ((eq? (stateRemove var state) state) (list (append (getvarsfromstate state) var) (append (getvaluesfromstate state) value )))
+      ((not (member*? var state)) (list (append (getvarsfromstate state) var) (append (getvaluesfromstate state) value )))
       (else state))))
 
 (define getvarsfromstate
@@ -191,4 +191,4 @@
       (else (member*? x (cdr lis))))))
 
 ;(interpret "tests1/5.txt")
-(stateRemove 'x '((x y) (5 10)))
+(stateAdd 'z 2 '((x) (5)))
