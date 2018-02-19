@@ -112,7 +112,7 @@
       ((null? (car state)) 'stateWasEmpty)
       ((eq? (caar state) var) (caar (cdr state)))
       ((null? (cdr state)) error)
-      (else (stateGet var (list (cons (cdr (car state)) '()) (cons (cdr (cdr state)) '()))))))) ; call recursively removing item from first and second lists of state
+      (else (stateGet var (list (cdr (car state)) (cdr (cadr state)))))))) ; call recursively removing item from first and second lists of state
 
 (define Mvalue.atom
   (lambda (a state)
