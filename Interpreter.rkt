@@ -60,7 +60,7 @@
   (lambda (assignment state)
     (cond
       ((null? state) 'VariableNotDeclared)
-      ((member*? (car assignment) state) (stateAdd (car assignment) (car (cdr assignment)) (stateRemove (car assignment) state)))
+      ((member*? (car assignment) state) (stateAdd (car assignment) (expression (car (cdr assignment)) state) (stateRemove (car assignment) state)))
       ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
       ;(else ((stateRemove var state) (stateAdd var value state))))))
       (else 'triedToAssignNotANumber))))
@@ -108,18 +108,18 @@
 ;Evaluates mathmatical expressions
 ;The order of operations is +,-,*,/,%
 (define expression
-  (lambda (state expr)
+  (lambda (expr state)
     (cond
       ((null? expr) '())
       ((number? expr) expr)
-      ((eq? '+ (operator expr)) (+ (expression state (operand1 expr)) (expression state (operand2 expr))))
+      ((eq? '+ (operator expr)) (+ (expression (operand1 expr) state) (expression (operand2 expr) state)))
       ((eq? '- (operator expr))
        (if (isNegativeNumber expr)
-           (- 0 (expression state (operand1 expr)))
-           (- (expression state (operand1 expr)) (expression state (operand2 expr)))))
-      ((eq? '* (operator expr)) (* (expression state (operand1 expr)) (expression state (operand2 expr))))
-      ((eq? '/ (operator expr)) (quotient (expression state (operand1 expr)) (expression state (operand2 expr))))
-      ((eq? '% (operator expr)) (remainder (expression state (operand1 expr)) (expression state (operand2 expr))))
+           (- 0 (expression (operand1 expr) state))
+           (- (expression (operand1 expr) state) (expression (operand2 expr) state))))
+      ((eq? '* (operator expr)) (* (expression (operand1 expr) state) (expression (operand2 expr) state)))
+      ((eq? '/ (operator expr)) (quotient (expression (operand1 expr) state) (expression (operand2 expr) state)))
+      ((eq? '% (operator expr)) (remainder (expression (operand1 expr) state) (expression (operand2 expr) state)))
       (else (error 'badoperation "Unknown operator")))))
 
 (define isNegativeNumber
