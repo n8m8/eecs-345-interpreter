@@ -48,7 +48,7 @@
     (cond
       ((null? state) 'StateUndeclared) ;should never really be reached but here for safety
       ((null? (cddr declaration)) (list (cons (car (cdr declaration)) (car state)) (cons '() (car (cdr state)))))
-      (else (assign (cdr declaration) (cons (cons (car (cdr declaration)) (car state)) (cdr state)))))))
+      (else (assign (cdr declaration) (list (cons (car (cdr declaration)) (car state)) (cons '() (car (cdr state))))))))) ;adds the variable to the state but not the value(ass
 
 ;Check if the variable is part of the state.
 ;If it is part of the state, remove it and its value
