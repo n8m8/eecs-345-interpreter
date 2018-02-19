@@ -62,7 +62,7 @@
 (define assign
   (lambda (assignment state)
     (cond
-      ((null? state) 'VariableNotDeclared)
+      ((null? state) 'stateWasNull)
       ((member*? (car assignment) state) (stateAdd (car assignment) (expression (car (cdr assignment)) state) (stateRemove (car assignment) state)))
       ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
       ;(else ((stateRemove var state) (stateAdd var value state))))))
@@ -95,6 +95,7 @@
   (lambda (var state)
     (cond
       ((null? state) 'itemDoesNotExist)
+      ((null? (car state)) 'stateWasEmpty)
       ((eq? (caar state) var) (caar (cdr state)))
       ((null? (cdr state)) error)
       (else (stateGet var (cdr state))))))
@@ -152,7 +153,7 @@
       ((eq? op '!) not)
       ((number? op) op)
       ((number? (stateGet op state)) (stateGet op state))
-      (else (expression state op)))))
+      (else (expression op state)))))
 
 ;There is no != in Scheme so Imma make my own
 (define !=
@@ -168,4 +169,4 @@
       ((eq? x (car lis)) #t)
       (else (member*? x (cdr lis))))))
 
-;(interpret "tests1/assignTest.lmao")
+(interpret "tests1/2.txt")
