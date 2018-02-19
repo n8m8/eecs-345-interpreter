@@ -35,7 +35,7 @@
     (cond
       ((null? tree) state)
       ((equal? (firststatement tree) 'return) (return (cadar tree) state))
-      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (cdr (car tree)) state))) ;(cdr (car tree)) returns everything after 'var
+      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state))) ;(cdr (car tree)) returns everything after 'var
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
       ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (cdr (car tree)) state))) ;(cdr (car tree)) gets rid of = sign because it's not important
@@ -48,7 +48,7 @@
     (cond
       ((null? state) 'StateUndeclared) ;should never really be reached but here for safety
       ((null? (cddr declaration)) (list (cons (car (cdr declaration)) (car state)) (cons '() (car (cdr state)))))
-      (else (assign (cdr declaration) state)))))
+      (else (assign (cdr declaration) (cons (cons (car (cdr declaration)) (car state)) (cdr state)))))))
 
 ;Check if the variable is part of the state.
 ;If it is part of the state, remove it and its value
