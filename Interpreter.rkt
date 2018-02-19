@@ -35,8 +35,8 @@
     (cond
       ((null? tree) state)
       ((equal? (firststatement tree) 'return) (return (cadar tree) state))
-      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state))) ;(cdr (car tree)) returns everything after 'var
-      ;((eq? (firststatement tree) 'if) (doifstuff))
+      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state)))
+      ((eq? (firststatement tree) 'if) (statement (cdr tree) (ifstatement (cdr (car tree)) state)))  ;(cdr (car tree)) returns everything after 'if
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
       ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (cdr (car tree)) state))) ;(cdr (car tree)) gets rid of = sign because it's not important
       (else (error)))))
@@ -61,6 +61,16 @@
       ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
       ;(else ((stateRemove var state) (stateAdd var value state))))))
       (else 'triedToAssignNotANumber))))
+
+;If statement
+(define ifstatement
+  (lambda (ifstmt state)
+    (cond
+      ((null? ifstmt) state)
+      ((return (car ifstmt) state)(statement (cons (cadr ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((null? (car (cddr ifstmt))) state) ;else: do nothing
+      (else (statement (cons (car (cddr ifstmt)) '()) state)))))
+                      
 
 (define Mstate.assign
   (lambda (s state)
@@ -152,22 +162,22 @@
   (lambda (op state)
     (cond
       ((null? op) '())
-      ((eq? op '+) +)
-      ((eq? op '-) -)
-      ((eq? op '*) *)
-      ((eq? op '/) quotient)
-      ((eq? op '%) remainder)
-      ((eq? op '==) =)
-      ((eq? op '!=) !=)
-      ((eq? op '<) <)
-      ((eq? op '>) >)
-      ((eq? op '<=) <=)
-      ((eq? op '>=) >=)
-      ((eq? op '&&) (lambda (a b) (and a b)))
-      ((eq? op '||) (lambda (a b) (or  a b)))
-      ((eq? op '!) not)
-      ((number? op) op)
       ((number? (stateGet op state)) (stateGet op state))
+      ((eq? (car op) '+) (+ (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '-) (- (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '*) (* (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '/) (quotient (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '%) (remainder (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '==) (eq? (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '!=) (!= (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '<) (< (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '>) (> (return (cadr op) state) (return (caddr op) state)))
+      ((eq? (car op) '<=) (<= (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '>=) (>= (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '&&) (and (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '||) (or (return (cadr op) state) (return (caddr op) state)))
+      ((eq? op '!) (not (return (cadr op) state)))
+      ((number? op) op)
       (else (expression op state)))))
 
 ;There is no != in Scheme so Imma make my own
