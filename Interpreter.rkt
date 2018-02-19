@@ -35,8 +35,8 @@
     (cond
       ((null? tree) state)
       ((equal? (firststatement tree) 'return) (return (cadar tree) state))
-      ((and (eq? (firststatement tree) 'var) (not (null? (cddr (car tree))))) (statement (cdr tree) (assign (cdr (car tree)) (declare (list 'var (cadar tree)) state))))
-      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state)))
+      ;((and (eq? (firststatement tree) 'var) (not (null? (cddr (car tree))))) (statement (cdr tree) (assign (cdr (car tree)) (declare (list 'var (cadar tree)) state))))
+      ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (cdr (car tree)) state))) ;(cdr (car tree)) returns everything after 'var
       ;((eq? (firststatement tree) 'if) (doifstuff))
       ;((eq? (firststatement tree) 'while) (dowhilestuff))
       ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (cdr (car tree)) state))) ;(cdr (car tree)) gets rid of = sign because it's not important
@@ -51,7 +51,9 @@
 (define declare
   (lambda (declaration state)
     (cond
-      ((null? (cdr declaration)) state)
+      ((null? state) 'StateUndeclared) ;should never really be reached but here for safety
+      ((and (null? (car state)) (null? (cdr declaration))) (cons (cons (car declaration) '()) (cons '(()) '()))) ;takes care of the case of no variables in the state
+      ((not (null? (cadr declaration))) (list (cons (car declaration) '()) (cons (expression (cadr declaration) state) '() )))
       (else (cons (cons (car (cdr declaration)) (car state)) (cons '() (cdr state)))))))
 
 ;Check if the variable is part of the state.
@@ -74,12 +76,12 @@
       (else (assign (car s) (cdr s) state)))))
 
 (define stateAdd
-  (lambda (item value state)
+  (lambda (var value state)
     (cond
-      ((null? item) error)
-      ((null? value) error)
-      ((eq? (car state) '()) (list (list item) (list value)))
-      ((eq? (stateRemove item state) state) (list (cons (car state) item) (cons (cdr state) value )))
+      ((null? var) error)
+      ((null? state) error)
+      ((null? (car state)) (list (list var) (list value)))
+      ((eq? (stateRemove var state) state) (list (cons (car state) var) (cons (cdr state) value )))
       (else (state)))))
 
 (define stateRemove
@@ -93,7 +95,7 @@
   (lambda (var state)
     (cond
       ((null? state) 'itemDoesNotExist)
-      ((eq? (caar state) var) (car (cdr state)))
+      ((eq? (caar state) var) (caar (cdr state)))
       ((null? (cdr state)) error)
       (else (stateGet var (cdr state))))))
 
@@ -166,4 +168,4 @@
       ((eq? x (car lis)) #t)
       (else (member*? x (cdr lis))))))
 
-(interpret "tests1/assignTest.lmao")
+;(interpret "tests1/assignTest.lmao")
