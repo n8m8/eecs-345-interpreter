@@ -58,6 +58,7 @@
     (cond
       ((null? state) 'StateUndeclared) ;should never really be reached but here for safety
       ((null? (cddr declaration)) (list (cons (car (cdr declaration)) (car state)) (cons '() (car (cdr state)))))
+      ((member*? (car (cdr declaration)) state) (error 'RedefiningError))
       (else (assign (cdr declaration) (list (cons (car (cdr declaration)) (car state)) (cons '() (car (cdr state))))))))) ;adds the variable to the state but not the value(ass
 
 ;Check if the variable is part of the state.
@@ -67,10 +68,10 @@
   (lambda (assignment state)
     (cond
       ((null? state) 'stateWasNull)
-      ((member*? (car assignment) state) (stateAdd (car assignment) (expression (car (cdr assignment)) state) (stateRemove (car assignment) state)))
+      ((member*? (car assignment) state) (stateAdd (car assignment) (return (car (cdr assignment)) state) (stateRemove (car assignment) state)))
       ;((eq? (stateGet var state) 'itemDoesNotExist) 'variableToAssignWasntDeclaredException)
       ;(else ((stateRemove var state) (stateAdd var value state))))))
-      (else 'triedToAssignNotANumber))))
+      (else (error 'VariableNotDeclaredYet)))))
 
 ;If statement
 (define ifstatement
@@ -128,10 +129,10 @@
 (define stateGet
   (lambda (var state)
     (cond
-      ((null? state) 'itemDoesNotExist)
-      ((null? (car state)) 'stateWasEmpty)
+      ((null? state) (error 'itemDoesNotExist))
+      ;((null? (car state)) (error 'UsedVariableBeforeDeclaring))
       ((eq? (caar state) var) (caar (cdr state)))
-      ((null? (cdr state)) error)
+      ((null? (cdr state)) (error 'VariableNotAssignedValue))
       (else (stateGet var (list (cdr (car state)) (cdr (cadr state)))))))) ; call recursively removing item from first and second lists of state
 
 (define Mvalue.atom
@@ -149,9 +150,11 @@
   (lambda (expr state)
     (cond
       ((null? expr) '())
-      ;Add error check for variables not in the stack
       ((number? expr) expr)
-      ((member*? expr state) (stateGet expr state)) ; need to check if it's a variable right here
+      ((member*? expr state) (if (null? (stateGet expr state)) ; need to check if it's a variable right here
+                                 (error 'VariableWasNotAssigned)
+                                 (stateGet expr state)))
+      ((not (list?  expr)) (error 'VariableInExpressionNotDeclared))
       ((eq? '+ (operator expr)) (+ (expression (operand1 expr) state) (expression (operand2 expr) state)))
       ((eq? '- (operator expr))
        (if (isNegativeNumber expr)
@@ -160,7 +163,7 @@
       ((eq? '* (operator expr)) (* (expression (operand1 expr) state) (expression (operand2 expr) state)))
       ((eq? '/ (operator expr)) (quotient (expression (operand1 expr) state) (expression (operand2 expr) state)))
       ((eq? '% (operator expr)) (remainder (expression (operand1 expr) state) (expression (operand2 expr) state)))
-      (else (error 'badoperation "Unknown operator")))))
+      (else (error 'badoperation 'UnknownOperator)))))
 
 (define isNegativeNumber
   (lambda (expr)
@@ -173,12 +176,15 @@
   (lambda (op state)
     (cond
       ((null? op) '())
-      ((number? (stateGet op state)) (stateGet op state))
-      ((eq? (car op) '+) (+ (return (cadr op) state) (return (caddr op) state)))
-      ((eq? (car op) '-) (- (return (cadr op) state) (return (caddr op) state)))
-      ((eq? (car op) '*) (* (return (cadr op) state) (return (caddr op) state)))
-      ((eq? (car op) '/) (quotient (return (cadr op) state) (return (caddr op) state)))
-      ((eq? (car op) '%) (remainder (return (cadr op) state) (return (caddr op) state)))
+      ((number? op) op)
+      ((member*? op state) (if (null? (stateGet op state)) ; need to check if it's a variable right here
+                                 (error 'VariableWasNotAssigned)
+                                 (stateGet op state)))
+      ((eq? op 'true) 'true)
+      ((eq? op 'false) 'false)
+      ((eq? op #t) 'true)
+      ((eq? op #f) 'false)
+      ((not (list?  op)) (error 'VariableInExpressionNotDeclared))
       ((eq? (car op) '==) (eq? (return (cadr op) state) (return (caddr op) state)))
       ((eq? (car op) '!=) (!= (return (cadr op) state) (return (caddr op) state)))
       ((eq? (car op) '<) (< (return (cadr op) state) (return (caddr op) state)))
@@ -188,7 +194,6 @@
       ((eq? (car op) '&&) (and (return (cadr op) state) (return (caddr op) state)))
       ((eq? (car op) '||) (or (return (cadr op) state) (return (caddr op) state)))
       ((eq? (car op) '!) (not (return (cadr op) state)))
-      ((number? op) op)
       (else (expression op state)))))
 
 ;There is no != in Scheme so Imma make my own
@@ -205,5 +210,10 @@
       ((eq? x (car lis)) #t)
       (else (member*? x (cdr lis))))))
 
-;(interpret "tests/19.txt")
-;(stateAdd 'z 2 '((x) (5)))
+;(interpret "tests/1.txt")(interpret "tests/2.txt")(interpret "tests/3.txt")(interpret "tests/4.txt") (interpret "tests/5.txt")(interpret "tests/6.txt")(interpret "tests/7.txt")(interpret "tests/8.txt")(interpret "tests/9.txt")(interpret "tests/10.txt")
+;(interpret "tests/11.txt")
+;(interpret "tests/12.txt")
+;(interpret "tests/13.txt")
+;(interpret "tests/14.txt")
+;(interpret "tests/15.txt")(interpret "tests/16.txt")
+(interpret "tests/17.txt")
