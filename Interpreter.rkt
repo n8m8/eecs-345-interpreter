@@ -34,12 +34,19 @@
   (lambda (tree state)
     (cond
       ((null? tree) state)
-      ((equal? (firststatement tree) 'return) (return (cadar tree) state))
+      ((equal? (firststatement tree) 'return) (fixtf (return (cadar tree) state)))
       ((eq? (firststatement tree) 'var) (statement (cdr tree) (declare (car tree) state)))
       ((eq? (firststatement tree) 'if) (statement (cdr tree) (ifstatement (cdr (car tree)) state)))  ;(cdr (car tree)) returns everything after 'if
       ((eq? (firststatement tree) 'while) (statement (cdr tree) (while (cdr (car tree)))))
       ((eq? (firststatement tree) '=) (statement (cdr tree) (assign (cdr (car tree)) state))) ;(cdr (car tree)) gets rid of = sign because it's not important
       (else (error)))))
+
+(define fixtf
+  (lambda (value)
+    (cond
+      ((eq? value #t) 'true)
+      ((eq? value #f) 'false)
+      (else value))))
 
 (define while
   (lambda (stmnt state)
@@ -78,17 +85,11 @@
   (lambda (ifstmt state)
     (cond
       ((null? ifstmt) state)
-      ((return (car ifstmt) state)(statement (cons (cadr ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((null? (cddr ifstmt)) state) ;else: do nothing
+      ((eq? (return (car ifstmt) state) 'true)(statement (cons (cadr ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((eq? (return (car ifstmt) state) 'false)(statement (cons (car (cddr ifstmt)) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((return (car ifstmt) state) (statement (cons (cadr ifstmt) '()) state))
+      ((null? (cddr ifstmt)) state) ; else: do nothing
       (else (statement (cons (car (cddr ifstmt)) '()) state)))))
-
-
-(define Mstate.assign
-  (lambda (s state)
-    (cond
-      ((null? s) state)
-      ((eq? operator))
-      (else (assign (car s) (cdr s) state)))))
 
 (define stateAdd
   (lambda (var value state)
@@ -135,14 +136,6 @@
       ((null? (cdr state)) (error 'VariableNotAssignedValue))
       (else (stateGet var (list (cdr (car state)) (cdr (cadr state)))))))) ; call recursively removing item from first and second lists of state
 
-(define Mvalue.atom
-  (lambda (a state)
-    (cond
-      ((number? a) a)
-      ((boolean? a) a)
-      ((eq? a 'true) #t)
-      ((eq? a 'false) #f)
-      (else (stateGet a state)))))
 
 ;Evaluates mathmatical expressions
 ;The order of operations is +,-,*,/,%
@@ -182,8 +175,6 @@
                                  (stateGet op state)))
       ((eq? op 'true) 'true)
       ((eq? op 'false) 'false)
-      ((eq? op #t) 'true)
-      ((eq? op #f) 'false)
       ((not (list?  op)) (error 'VariableInExpressionNotDeclared))
       ((eq? (car op) '==) (eq? (return (cadr op) state) (return (caddr op) state)))
       ((eq? (car op) '!=) (!= (return (cadr op) state) (return (caddr op) state)))
@@ -215,5 +206,7 @@
 ;(interpret "tests/12.txt")
 ;(interpret "tests/13.txt")
 ;(interpret "tests/14.txt")
-;(interpret "tests/15.txt")(interpret "tests/16.txt")
-(interpret "tests/17.txt")
+;(interpret "tests/15.txt")(interpret "tests/16.txt")(interpret "tests/17.txt")
+;(interpret "tests/18.txt")
+(interpret "tests/19.txt")
+;(interpret "tests/20.txt")
