@@ -2,22 +2,26 @@
 ; Alex Marshall awm48
 ; Nathan Walls nfw10
 ; Anna Burkhart alb171
-; EECS 345 - Main Interpreter Part I
-
-; We want to use multiple files, at least in development, to make VCS easier
-; To do this, we require racket/include in this main Interpreter.rkt file
-; Every other .rkt file we want to include should add '(require "otherfile.rkt)'
-; In the other .rkt file, you must have '(provide myfunctionname)' for each of the functions in that file
+; EECS 345 - Main Interpreter Part II
 
 (require "simpleParser.scm")
 
 ;====================================================
 
+#|
+Alex's comments
+We will most likely need to make our 'interpret' function implement call/cc
+for throwing errors
+I put some dummy lines of code in statement for what we are going to have to implement
+We also need to add abstraction? where we (define operator1 caar) in all our functions because it is
+pretty hard to tell what is going on.
+|#
+
 ; Input is the return parse tree from simpleParser and the intial state is '(() ()) so that our binding pairs will
 ; be stored in two lists
 (define interpret
   (lambda (file_name)
-    (statement (parser file_name) '(()())  )))
+    (statement (parser file_name) initialState )))
 
 ; Check what kind of statement and interpret accordingly (ex. return, var, if, while, or =)
 ; Takes (cdr (car tree)) to eliminate statement word (ex. return, var, if, while, or =) if
@@ -31,6 +35,11 @@
       ((eq? (firststatement tree) 'if) (statement (cdr tree) (Mstate.if (cdr (car tree)) state))) 
       ((eq? (firststatement tree) 'while) (statement (cdr tree) (Mstate.while (cdr (car tree)) state)))
       ((eq? (firststatement tree) '=) (statement (cdr tree) (Mstate.assign (cdr (car tree)) state)))
+      ;((eq? (firststatement tree) 'break) (doSomething))
+      ;((eq? (firststatement tree) 'continue) (doSomething))
+      ;((eq? (firststatement tree) 'throw) (doSomething))
+      ;((eq? (firststatement tree) 'begin) (doSomething))
+      ;((eq? (firststatement tree) 'try) (doSomething))
       (else (error 'InvalidStatement)))))
 
 ; Takes an operator and state as its input and
@@ -47,15 +56,15 @@
       ((eq? op 'true) 'true)
       ((eq? op 'false) 'false)
       ((not (list?  op)) (error 'VariableInExpressionNotDeclaredYet))
-      ((eq? (car op) '==) (eq? (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (car op) '!=) (!= (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (car op) '<) (< (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (car op) '>) (> (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (car op) '<=) (<= (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (car op) '>=) (>= (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (car op) '&&) (and (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (car op) '||) (or (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (car op) '!) (not (Mboolean.return (cadr op) state)))
+      ((eq? (operator op) '==) (eq? (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
+      ((eq? (operator op) '!=) (!= (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
+      ((eq? (operator op) '<) (< (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
+      ((eq? (operator op) '>) (> (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
+      ((eq? (operator op) '<=) (<= (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
+      ((eq? (operator op) '>=) (>= (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
+      ((eq? (operator op) '&&) (and (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
+      ((eq? (operator op) '||) (or (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
+      ((eq? (operator op) '!) (not (Mboolean.return (cadr op) state)))
       (else (Mvalue.expression op state)))))
 
 ; Evaluates mathmatical expressions
@@ -199,6 +208,7 @@
 ; Makes more code more readable and was easier to add but technically could be omitted and could just call
 ; explicitly in every instance (ex. (caar x))
 
+(define initialState '((()())))
 (define firststatement caar)
 (define operator car)
 (define operand1 cadr)
