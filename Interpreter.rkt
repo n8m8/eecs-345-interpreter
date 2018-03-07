@@ -21,7 +21,7 @@ pretty hard to tell what is going on.
 ; be stored in two lists
 (define interpret
   (lambda (file_name)
-    (statement (parser file_name) initialState )))
+    (statement (parser file_name) initialState)))
 
 ; Check what kind of statement and interpret accordingly (ex. return, var, if, while, or =)
 ; Takes (cdr (car tree)) to eliminate statement word (ex. return, var, if, while, or =) if
@@ -30,16 +30,16 @@ pretty hard to tell what is going on.
   (lambda (tree state)
     (cond
       ((null? tree) state)
-      ((equal? (firststatement tree) 'return) (fixtf (Mboolean.return (cadar tree) state)))
-      ((eq? (firststatement tree) 'var) (statement (cdr tree) (Mstate.declare (car tree) state)))
-      ((eq? (firststatement tree) 'if) (statement (cdr tree) (Mstate.if (cdr (car tree)) state))) 
-      ((eq? (firststatement tree) 'while) (statement (cdr tree) (Mstate.while (cdr (car tree)) state)))
-      ((eq? (firststatement tree) '=) (statement (cdr tree) (Mstate.assign (cdr (car tree)) state)))
-      ;((eq? (firststatement tree) 'break) (doSomething))
-      ;((eq? (firststatement tree) 'continue) (doSomething))
-      ;((eq? (firststatement tree) 'throw) (doSomething))
-      ;((eq? (firststatement tree) 'begin) (doSomething))
-      ;((eq? (firststatement tree) 'try) (doSomething))
+      ((equal? (firstSymbol tree) 'return) (fixtf (Mboolean.return (returnValue tree) state)))
+      ((eq? (firstSymbol tree) 'var) (statement (restOfParseTree tree) (Mstate.declare (statementWithoutSymbol tree) state)))
+      ((eq? (firstSymbol tree) 'if) (statement (restOfParseTree tree) (Mstate.if (statementWithoutSymbol tree) state))) 
+      ((eq? (firstSymbol tree) 'while) (statement (restOfParseTree tree) (Mstate.while (statementWithoutSymbol tree) state)))
+      ((eq? (firstSymbol tree) '=) (statement (restOfParseTree tree) (Mstate.assign (statementWithoutSymbol tree) state)))
+      ;((eq? (firstSymbol tree) 'begin) (doSomething))s
+      ;((eq? (firstSymbol tree) 'break) (doSomething))
+      ;((eq? (firstSymbol tree) 'continue) (doSomething))
+      ;((eq? (firstSymbol tree) 'throw) (doSomething))
+      ;((eq? (firstSymbol tree) 'try) (doSomething))
       (else (error 'InvalidStatement)))))
 
 ; Takes an operator and state as its input and
@@ -56,15 +56,15 @@ pretty hard to tell what is going on.
       ((eq? op 'true) 'true)
       ((eq? op 'false) 'false)
       ((not (list?  op)) (error 'VariableInExpressionNotDeclaredYet))
-      ((eq? (operator op) '==) (eq? (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (operator op) '!=) (!= (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (operator op) '<) (< (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (operator op) '>) (> (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (operator op) '<=) (<= (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (operator op) '>=) (>= (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (operator op) '&&) (and (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (operator op) '||) (or (Mboolean.return (cadr op) state) (Mboolean.return (caddr op) state)))
-      ((eq? (operator op) '!) (not (Mboolean.return (cadr op) state)))
+      ((eq? (operator op) '==) (eq? (Mboolean.return (firstBoolExpression op) state) (Mboolean.return (secondBoolExpression op) state)))
+      ((eq? (operator op) '!=) (!= (Mboolean.return (firstBoolExpression op) state) (Mboolean.return (secondBoolExpression op) state)))
+      ((eq? (operator op) '<) (< (Mboolean.return (firstBoolExpression op) state) (Mboolean.return (secondBoolExpression op) state)))
+      ((eq? (operator op) '>) (> (Mboolean.return (firstBoolExpression op) state) (Mboolean.return (secondBoolExpression op) state)))
+      ((eq? (operator op) '<=) (<= (Mboolean.return (firstBoolExpression op) state) (Mboolean.return (secondBoolExpression op) state)))
+      ((eq? (operator op) '>=) (>= (Mboolean.return (firstBoolExpression op) state) (Mboolean.return (secondBoolExpression op) state)))
+      ((eq? (operator op) '&&) (and (Mboolean.return (firstBoolExpression op) state) (Mboolean.return (secondBoolExpression op) state)))
+      ((eq? (operator op) '||) (or (Mboolean.return (firstBoolExpression op) state) (Mboolean.return (secondBoolExpression op) state)))
+      ((eq? (operator op) '!) (not (Mboolean.return (firstBoolExpression op) state)))
       (else (Mvalue.expression op state)))))
 
 ; Evaluates mathmatical expressions
@@ -97,9 +97,9 @@ pretty hard to tell what is going on.
   (lambda (declaration state)
     (cond
       ((null? state) 'StateUnDeclared) ;should never really be reached but here for safety
-      ((null? (cddr declaration)) (list (cons (car (cdr declaration)) (car state)) (cons '() (car (cdr state)))))
-      ((member*? (car (cdr declaration)) state) (error 'RedefiningError))
-      (else (Mstate.assign (cdr declaration) (list (cons (car (cdr declaration)) (car state)) (cons '() (car (cdr state))))))))) ;adds the variable to the state but not the value(ass
+      ((null? (variableValue declaration)) (list (cons (variableName declaration) (variablesOfState state)) (cons '() (valuesOfState state))))
+      ((member*? (variableName declaration) state) (error 'RedefiningError)) 
+      (else (Mstate.assign declaration (list (cons (variableName declaration) (variablesOfState state)) (cons '() (valuesOfState state)))))))) ;adds the variable to the state but not the value
 
 ; Check if the variable is part of the state.
 ; If it is part of the state, remove it and its value
@@ -122,11 +122,11 @@ pretty hard to tell what is going on.
   (lambda (ifstmt state)
     (cond
       ((null? ifstmt) state)
-      ((eq? (Mboolean.return (car ifstmt) state) 'true)(statement (cons (cadr ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((eq? (Mboolean.return (car ifstmt) state) 'false)(statement (cons (car (cddr ifstmt)) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((Mboolean.return (car ifstmt) state) (statement (cons (cadr ifstmt) '()) state))
-      ((null? (cddr ifstmt)) state) ; else: do nothing
-      (else (statement (cons (car (cddr ifstmt)) '()) state)))))
+      ((eq? (Mboolean.return (conditionalStatement ifstmt) state) 'true)(statement (cons (statement1 ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((eq? (Mboolean.return (conditionalStatement ifstmt) state) 'false)(statement (cons (statement2 ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((Mboolean.return (conditionalStatement ifstmt) state) (statement (cons (statement1 ifstmt) '()) state))
+      ((null? (cddr ifstmt)) state) ; checks if there is an 'else' statement
+      (else (statement (cons (statement2 ifstmt) '()) state)))))
 
 ; Mstate.while statement: loops if while statement is true, updating the state or
 ; (second line checks if #t instead of true for while loop), otherwise return
@@ -136,8 +136,8 @@ pretty hard to tell what is going on.
   (lambda (Mstate.whileloop state)
     (cond
       ((null? Mstate.whileloop) state)
-      ((eq? (Mboolean.return (car Mstate.whileloop) state) 'true) (Mstate.while Mstate.whileloop (statement (cons (cadr Mstate.whileloop) '()) state)))
-      ((Mboolean.return (car Mstate.whileloop) state) (Mstate.while Mstate.whileloop (statement (cons (cadr Mstate.whileloop) '()) state)))
+      ((eq? (Mboolean.return (conditionalStatement Mstate.whileloop) state) 'true) (Mstate.while Mstate.whileloop (statement (cons (statement1 Mstate.whileloop) '()) state)))
+      ((Mboolean.return (conditionalStatement Mstate.whileloop) state) (Mstate.while Mstate.whileloop (statement (cons (statement1 Mstate.whileloop) '()) state)))
       (else state))))
 
 
@@ -208,11 +208,24 @@ pretty hard to tell what is going on.
 ; Makes more code more readable and was easier to add but technically could be omitted and could just call
 ; explicitly in every instance (ex. (caar x))
 
-(define initialState '((()())))
-(define firststatement caar)
+(define initialState '(()()))
+(define firstSymbol caar)
+(define firstStatement car)
+(define statementWithoutSymbol cdar)
 (define operator car)
 (define operand1 cadr)
 (define operand2 caddr)
+(define firstBoolExpression cadr)
+(define secondBoolExpression caddr)
+(define returnValue cadar)
+(define restOfParseTree cdr)
+(define variableValue cdr)
+(define variableName car)
+(define variablesOfState car)
+(define valuesOfState cadr)
+(define conditionalStatement car)
+(define statement1 cadr)
+(define statement2 caddr)
 
 ;====================================================
 ;*****TESTING*********
