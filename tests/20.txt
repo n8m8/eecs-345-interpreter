@@ -1,6 +1,4 @@
-var x = 20;
-var y = 128;
-while (x * x > 128)
-  x = x - 1;
-x = x + 1;
+var x = 0;
+while ((x = x + 1) < 21)
+  x = x;
 return x;

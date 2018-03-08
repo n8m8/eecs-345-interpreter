@@ -1,3 +1,9 @@
 var x = 10;
-var y = 12 + x;
-return x * y;
+var y = 4;
+if (x < y) {
+  var min = x;
+}
+else {
+  var min = y;
+}
+return min;

@@ -1,8 +1,11 @@
-var x = 5;
-var y = 6;
-var m;
-if (x >= y)
-  m = x;
-else
-  m = y;
-return m;
+var x = 0;
+var result = 0;
+
+while (x < 10) {
+  if (result > 15) {
+    return result;
+  }
+  result = result + x;
+  x = x + 1;
+}
+return result;

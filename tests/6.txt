@@ -1,8 +1,7 @@
-var x = 5;
-var y = 6;
-var m;
-if (x <= y)
-  m = x;
-else
-  m = y;
-return m;
+var x = 0;
+x = x + 25;
+return x;
+x = x + 25;
+return x;
+x = x + 25;
+return x;

@@ -1,4 +1,3 @@
-var x;
-var y;
-x = x + y;
+var x = 1;
+break;
 return x;

@@ -1,8 +1,20 @@
 var x = 10;
-var y = 20;
-var z = 20 >= 10;
-if (!z || false)
-  z = !z;
-else
-  z = z;
-return z;
+var result = 1;
+
+try {
+  while (x < 10000) {
+     result = result - 1;
+     x = x + 10;
+
+     if (x > 1000) {
+       throw x;
+     }
+     else if (x > 100) {
+        break;
+     }
+  }
+}
+finally {
+  result = result + x;
+}
+return result;
