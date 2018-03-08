@@ -35,7 +35,7 @@ pretty hard to tell what is going on.
       ((eq? (firstSymbol tree) 'if) (statement (restOfParseTree tree) (Mstate.if (statementWithoutSymbol tree) state))) 
       ((eq? (firstSymbol tree) 'while) (statement (restOfParseTree tree) (Mstate.while (statementWithoutSymbol tree) state)))
       ((eq? (firstSymbol tree) '=) (statement (restOfParseTree tree) (Mstate.assign (statementWithoutSymbol tree) state)))
-      ;((eq? (firstSymbol tree) 'begin) (doSomething))s
+      ((eq? (firstSymbol tree) 'begin) (statement (restOfParseTree tree) (statement (cdar tree) state)))
       ;((eq? (firstSymbol tree) 'break) (doSomething))
       ;((eq? (firstSymbol tree) 'continue) (doSomething))
       ;((eq? (firstSymbol tree) 'throw) (doSomething))
@@ -231,7 +231,15 @@ pretty hard to tell what is going on.
 ;*****TESTING*********
 ;====================================================
 
-;(interpret "tests/1.txt")(interpret "tests/2.txt")(interpret "tests/3.txt")(interpret "tests/4.txt") (interpret "tests/5.txt")(interpret "tests/6.txt")(interpret "tests/7.txt")(interpret "tests/8.txt")(interpret "tests/9.txt")(interpret "tests/10.txt")
+;(interpret "tests/1.txt")
+;(interpret "tests/2.txt")
+;(interpret "tests/3.txt")
+;(interpret "tests/4.txt")
+;(interpret "tests/5.txt")
+;(interpret "tests/6.txt")
+;(statement '((begin (if (> result 15) (begin (return result))) (= result (+ result x)) (= x (+ x 1)))) '((result x) (21 7)))
+;(interpret "tests/7.txt")
+;(interpret "tests/8.txt")(interpret "tests/9.txt")(interpret "tests/10.txt")
 ;(interpret "tests/11.txt")
 ;(interpret "tests/12.txt")
 ;(interpret "tests/13.txt")
