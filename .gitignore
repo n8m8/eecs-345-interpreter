@@ -1,4 +1,5 @@
 /compiled
+compiled/drracket/errortrace
 *.bak
 
 *.1
