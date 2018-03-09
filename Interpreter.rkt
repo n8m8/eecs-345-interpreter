@@ -21,24 +21,33 @@
   (lambda (tree state)
     (call/cc
      (lambda (break)
-       (statement-cc tree state break)))))
+       (statement-cc tree state break (lambda (v) (error 'BreakCalledOutsideLoop)))))))
 
 ; Check what kind of statement and interpret accordingly (ex. return, var, if, while, or =)
 (define statement-cc
-  (lambda (tree state break)
+  (lambda (tree state break whileBreak)
     (cond
       ((null? tree) state)
       ((equal? (firstSymbol tree) 'return) (break (fixtf (Mboolean.return (returnValue tree) state))))
-      ((eq? (firstSymbol tree) 'var) (statement-cc (restOfParseTree tree) (Mstate.declare (statementWithoutSymbol tree) state) break))
-      ((eq? (firstSymbol tree) 'if) (statement-cc (restOfParseTree tree) (Mstate.if (statementWithoutSymbol tree) state break) break)) 
-      ((eq? (firstSymbol tree) 'while) (statement-cc (restOfParseTree tree) (Mstate.while (statementWithoutSymbol tree) state break) break))
-      ((eq? (firstSymbol tree) '=) (statement-cc (restOfParseTree tree) (Mstate.assign (statementWithoutSymbol tree) state) break))
-      ((eq? (firstSymbol tree) 'begin) (statement-cc (restOfParseTree tree) (removeLocalState (statement-cc (statementWithoutSymbol tree) (addLocalState initialState state) break)) break))
+      ((eq? (firstSymbol tree) 'continue) (whileBreak (popState state)))
+      ((eq? (firstSymbol tree) 'var) (statement-cc (restOfParseTree tree) (Mstate.declare (statementWithoutSymbol tree) state) break whileBreak))
+      ((eq? (firstSymbol tree) 'if) (statement-cc (restOfParseTree tree) (Mstate.if (statementWithoutSymbol tree) state break whileBreak) break whileBreak)) 
+      ((eq? (firstSymbol tree) 'while) (statement-cc tree (call/cc
+                                        (lambda (nestedwhileBreak)
+                                          (statement-cc (restOfParseTree tree)
+                                                        (Mstate.while (statementWithoutSymbol tree) state break nestedwhileBreak) break whileBreak))) break whileBreak))
+      ((eq? (firstSymbol tree) '=) (statement-cc (restOfParseTree tree) (Mstate.assign (statementWithoutSymbol tree) state) break whileBreak))
+      ((eq? (firstSymbol tree) 'begin) (statement-cc (restOfParseTree tree)
+                                                     (removeLocalState (statement-cc (statementWithoutSymbol tree) (addLocalState initialState state) break whileBreak)) break whileBreak))
       ;((eq? (firstSymbol tree) 'break) (doSomething))
       ;((eq? (firstSymbol tree) 'continue) (doSomething))
       ;((eq? (firstSymbol tree) 'throw) (doSomething))
       ;((eq? (firstSymbol tree) 'try) (doSomething))
       (else (error 'InvalidStatement)))))
+
+(define continue
+  (lambda (state c)
+    (c)))
 
 ; Adds a new layer to the state for local variables
 (define addLocalState
@@ -130,25 +139,25 @@
 ; changes the state using the else statement
 ; Mstate because it changes the state according to the conditional statement
 (define Mstate.if
-  (lambda (ifstmt state break)
+  (lambda (ifstmt state break whileBreak)
     (cond
       ((null? ifstmt) state)
-      ((eq? (fixtf (Mboolean.return (conditionalStatement ifstmt) state)) 'true)(statement-cc (cons (statement1 ifstmt) '()) state break)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((eq? (Mboolean.return (conditionalStatement ifstmt) state) 'false)(statement-cc (cons (statement2 ifstmt) '()) state break)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((Mboolean.return (conditionalStatement ifstmt) state) (statement-cc (cons (statement1 ifstmt) '()) state break))
+      ((eq? (fixtf (Mboolean.return (conditionalStatement ifstmt) state)) 'true)(statement-cc (cons (statement1 ifstmt) '()) state break whileBreak)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((eq? (Mboolean.return (conditionalStatement ifstmt) state) 'false)(statement-cc (cons (statement2 ifstmt) '()) state break whileBreak)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((Mboolean.return (conditionalStatement ifstmt) state) (statement-cc (cons (statement1 ifstmt) '()) state break whileBreak))
       ((null? (cddr ifstmt)) state) ; checks if there is an 'else' statement
-      (else (statement-cc (cons (statement2 ifstmt) '()) state break)))))
+      (else (statement-cc (cons (statement2 ifstmt) '()) state break whileBreak)))))
 
 ; Mstate.while statement: loops if while statement is true, updating the state or
 ; (second line checks if #t instead of true for while loop), otherwise return
 ; state
 ; Mstate because changes variable state as long as while condition is true
 (define Mstate.while
-  (lambda (Mstate.whileloop state break)
+  (lambda (Mstate.whileloop state break whileBreak)
     (cond
       ((null? Mstate.whileloop) state)
-      ((eq? (fixtf (Mboolean.return (conditionalStatement Mstate.whileloop) state)) 'true) (Mstate.while Mstate.whileloop (statement-cc (cons (statement1 Mstate.whileloop) '()) state break) break))
-      ((Mboolean.return (conditionalStatement Mstate.whileloop) state) (Mstate.while Mstate.whileloop (statement-cc (cons (statement1 Mstate.whileloop) '()) state break)))
+      ((eq? (fixtf (Mboolean.return (conditionalStatement Mstate.whileloop) state)) 'true) (Mstate.while Mstate.whileloop (statement-cc (cons (statement1 Mstate.whileloop) '()) state break whileBreak) break whileBreak))
+      ((Mboolean.return (conditionalStatement Mstate.whileloop) state) (Mstate.while Mstate.whileloop (statement-cc (cons (statement1 Mstate.whileloop) '()) state break whileBreak)))
       (else state))))
 
 
@@ -281,16 +290,18 @@
 ;*****TESTING*********
 ;====================================================
 
-(interpret "tests/1.txt")
-(interpret "tests/2.txt")
-(interpret "tests/3.txt")
-(interpret "tests/4.txt")
-(interpret "tests/5.txt")
+;(interpret "tests/1.txt")
+;(interpret "tests/2.txt")
+;(interpret "tests/3.txt")
+;(interpret "tests/4.txt")
+;(interpret "tests/5.txt")
 ;(interpret "tests/6.txt")
 ;(interpret "tests/7.txt")
-;(interpret "tests/8.txt")(interpret "tests/9.txt")(interpret "tests/10.txt")
+(interpret "tests/8.txt")
+;(interpret "tests/9.txt")
+;(interpret "tests/10.txt")
 ;(interpret "tests/11.txt")
-;(interpret "tests/12.txt")
+(interpret "tests/12.txt")
 ;(interpret "tests/13.txt")
 ;(interpret "tests/14.txt")
 ;(interpret "tests/15.txt")(interpret "tests/16.txt")(interpret "tests/17.txt")
