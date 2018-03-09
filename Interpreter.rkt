@@ -8,15 +8,6 @@
 
 ;====================================================
 
-#|
-Alex's comments
-We will most likely need to make our 'interpret' function implement call/cc
-for throwing errors
-I put some dummy lines of code in statement for what we are going to have to implement
-We also need to add abstraction? where we (define operator1 caar) in all our functions because it is
-pretty hard to tell what is going on.
-|#
-
 (define call/cc call-with-current-continuation)
 
 ; Input is the return parse tree from simpleParser and the intial state is '(() ()) so that our binding pairs will
@@ -25,6 +16,7 @@ pretty hard to tell what is going on.
   (lambda (file_name)
     (statement (parser file_name) '((()())) )))
 
+; Our statement function which implements call/cc
 (define statement
   (lambda (tree state)
     (call/cc
@@ -32,16 +24,14 @@ pretty hard to tell what is going on.
        (statement-cc tree state break)))))
 
 ; Check what kind of statement and interpret accordingly (ex. return, var, if, while, or =)
-; Takes (cdr (car tree)) to eliminate statement word (ex. return, var, if, while, or =) if
-; necessary input for functions they correlate to
 (define statement-cc
   (lambda (tree state break)
     (cond
       ((null? tree) state)
       ((equal? (firstSymbol tree) 'return) (break (fixtf (Mboolean.return (returnValue tree) state))))
       ((eq? (firstSymbol tree) 'var) (statement-cc (restOfParseTree tree) (Mstate.declare (statementWithoutSymbol tree) state) break))
-      ((eq? (firstSymbol tree) 'if) (statement-cc (restOfParseTree tree) (Mstate.if (statementWithoutSymbol tree) state) break)) 
-      ((eq? (firstSymbol tree) 'while) (statement-cc (restOfParseTree tree) (Mstate.while (statementWithoutSymbol tree) state) break))
+      ((eq? (firstSymbol tree) 'if) (statement-cc (restOfParseTree tree) (Mstate.if (statementWithoutSymbol tree) state break) break)) 
+      ((eq? (firstSymbol tree) 'while) (statement-cc (restOfParseTree tree) (Mstate.while (statementWithoutSymbol tree) state break) break))
       ((eq? (firstSymbol tree) '=) (statement-cc (restOfParseTree tree) (Mstate.assign (statementWithoutSymbol tree) state) break))
       ((eq? (firstSymbol tree) 'begin) (statement-cc (restOfParseTree tree) (removeLocalState (statement-cc (statementWithoutSymbol tree) (addLocalState initialState state) break)) break))
       ;((eq? (firstSymbol tree) 'break) (doSomething))
@@ -50,10 +40,12 @@ pretty hard to tell what is going on.
       ;((eq? (firstSymbol tree) 'try) (doSomething))
       (else (error 'InvalidStatement)))))
 
+; Adds a new layer to the state for local variables
 (define addLocalState
   (lambda (stateToAdd state)
     (cons stateToAdd state)))
 
+; Removes the top most layer of the state
 (define removeLocalState
   (lambda (state)
     (if (null? state)
@@ -62,7 +54,7 @@ pretty hard to tell what is going on.
 
 ; Takes an operator and state as its input and
 ; then matches up the operator with the closest operator in Scheme
-; Mboolean because just checks whether operate is equal to or not equal to a value
+; Mboolean checks whether operate is equal to or not equal to a value
 (define Mboolean.return
   (lambda (op state)
     (cond
@@ -108,82 +100,80 @@ pretty hard to tell what is going on.
       ((eq? '% (operator expr)) (remainder (Mvalue.expression (operand1 expr) state) (Mvalue.expression (operand2 expr) state)))
       (else (error 'UnknownOperator)))))
 
-; If we reach this function we must at least have (var) so first condition checks for "var" + "number/letter"
-; and return the state if the "number/letter" is null, and otherwise calls Mstate.declare on "var" + "number/letter"
-; Mstate because variable is added to state with no value, returns the state
+; Takes care of decrlaring variables
+; This function is only called when a new variable is introduced
+; Calls addValToLayer which will add the var and value to the appropriate layer
 (define Mstate.declare
   (lambda (declaration state)
     (cond
       ((null? state) 'StateUnDeclared) ;should never really be reached but here for safety
-      ;((null? (variableValue declaration)) (list (cons (variableName declaration) (variablesOfState state)) (cons '() (valuesOfState state))))
-      ((null? (variableValue declaration)) (cons (Mstate.addValToLayer (variableName declaration) '() (car state)) (cdr state)))
+      ((null? (variableValue declaration)) (cons (Mstate.addValToLayer (variableName declaration) '() (firstState state)) (popState state)))
       ((member*? (variableName declaration) state) (error 'RedefiningError)) 
-      ;(else (Mstate.assign declaration (list (cons (variableName declaration) (variablesOfState state)) (cons '() (valuesOfState state)))))))) ;adds the variable to the state but not the value
-      (else (cons (Mstate.addValToLayer (variableName declaration) (Mvalue.expression (variableValue declaration) state) (car state) lambdavv) (cdr state))))))
+      (else (cons (Mstate.addValToLayer (variableName declaration) (Mvalue.expression (variableValue declaration) state) (firstState state) lambdavv) (popState state))))))
       
 ; Check if the variable is part of the state.
-; If it is part of the state, remove it and its value
-; Re-add the variable and new value to the state
+; If it is part of the state, remove its value
+; Add the new value to the state
 ; Mstate because adds value for a variable to the state
-; (could argue Mvalue since specifically inserts a value
-; even though assign returns the state still)
 (define Mstate.assign
   (lambda (assignment state)
     (cond
       ((null? state) 'stateWasNull)
-      ;((member*? (car assignment) state) (Mstate.add (car assignment) (Mboolean.return (cadr assignment) state) (Mstate.remove (car assignment) state)))
-      ((member*? (car assignment) state) (Mstate.add (car assignment) (Mboolean.return (cadr assignment) state) (Mstate.remove (car assignment) state)))
+      ((member*? (car assignment) state) (Mstate.add (assignmentVarToSave assignment) (Mboolean.return (assignmentValueToSave assignment) state) (Mstate.remove (assignmentVarToSave assignment) state)))
       (else (error 'VariableNotDeclaredYet)))))
+
+(define assignmentVarToSave car)
+(define assignmentValueToSave cadr)
 
 ; If statement: evaluates the if statement, and changes the state using the second
 ; statement if true, otherwise does nothing if there is no else statement, or
 ; changes the state using the else statement
 ; Mstate because it changes the state according to the conditional statement
 (define Mstate.if
-  (lambda (ifstmt state)
+  (lambda (ifstmt state break)
     (cond
       ((null? ifstmt) state)
-      ((eq? (fixtf (Mboolean.return (conditionalStatement ifstmt) state)) 'true)(statement (cons (statement1 ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((eq? (Mboolean.return (conditionalStatement ifstmt) state) 'false)(statement (cons (statement2 ifstmt) '()) state)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((Mboolean.return (conditionalStatement ifstmt) state) (statement (cons (statement1 ifstmt) '()) state))
+      ((eq? (fixtf (Mboolean.return (conditionalStatement ifstmt) state)) 'true)(statement-cc (cons (statement1 ifstmt) '()) state break)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((eq? (Mboolean.return (conditionalStatement ifstmt) state) 'false)(statement-cc (cons (statement2 ifstmt) '()) state break)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((Mboolean.return (conditionalStatement ifstmt) state) (statement-cc (cons (statement1 ifstmt) '()) state break))
       ((null? (cddr ifstmt)) state) ; checks if there is an 'else' statement
-      (else (statement (cons (statement2 ifstmt) '()) state)))))
+      (else (statement-cc (cons (statement2 ifstmt) '()) state break)))))
 
 ; Mstate.while statement: loops if while statement is true, updating the state or
 ; (second line checks if #t instead of true for while loop), otherwise return
 ; state
 ; Mstate because changes variable state as long as while condition is true
 (define Mstate.while
-  (lambda (Mstate.whileloop state)
+  (lambda (Mstate.whileloop state break)
     (cond
       ((null? Mstate.whileloop) state)
-      ((eq? (fixtf (Mboolean.return (conditionalStatement Mstate.whileloop) state)) 'true) (Mstate.while Mstate.whileloop (statement (cons (statement1 Mstate.whileloop) '()) state)))
-      ((Mboolean.return (conditionalStatement Mstate.whileloop) state) (Mstate.while Mstate.whileloop (statement (cons (statement1 Mstate.whileloop) '()) state)))
+      ((eq? (fixtf (Mboolean.return (conditionalStatement Mstate.whileloop) state)) 'true) (Mstate.while Mstate.whileloop (statement-cc (cons (statement1 Mstate.whileloop) '()) state break) break))
+      ((Mboolean.return (conditionalStatement Mstate.whileloop) state) (Mstate.while Mstate.whileloop (statement-cc (cons (statement1 Mstate.whileloop) '()) state break)))
       (else state))))
 
 
-; Adds the variable's value to the state
+; Adds the variable and the variable's value to the top most layer
 ; Mstate because adds value with associated variable to state
-#|(define Mstate.addValToLayer
-  (lambda (var value state)
-    (cond
-      ((null? var) 'variableNameWasNull)
-      ((null? state) 'stateWasNullException)
-      ((not (member*? var state)) (list (cons var (car state)) (cons value (cadr state))))
-      ((eq? (caar state) var) (list (variablesOfState state) (cons value (cdadr state))))
-      (else (Mstate.addValToLayer var value (cons (cdar state) (cons (cdadr state) '())))))))|#
-
 (define Mstate.addValToLayer
   (lambda (var value state return)
     (cond
       ((null? var) 'variableNameWasNull)
       ((null? state) 'stateWasNullException)
-      ((not (member*? var state)) (return (list (cons var (car state)) (cons value (cadr state)))))
-      ((eq? (caar state) var) (return (list (variablesOfState state) (cons value (cdadr state)))))
-      (else (Mstate.addValToLayer var value (cons (cdar state) (cons (cdadr state) '())) (lambda (v) (return (list (cons (caar state) (car v)) (cons (caadr state) (cadr v))))))))))
+      ((not (member*? var state)) (return (list (cons var (stateNames state)) (cons value (stateValues state)))))
+      ((eq? (stateFirstName state) var) (return (list (variablesOfState state) (cons value (stateRestOfValues state)))))
+      (else (Mstate.addValToLayer var value (cons (stateRestOfVars state) (cons (stateRestOfValues state) '())) (lambda (v) (return (list (cons (stateFirstName state) (stateNames v)) (cons (stateFirstValue state) (stateValues v))))))))))
+
+(define stateNames car)
+(define stateValues cadr)
+(define stateFirstName caar)
+(define stateFirstValue caadr)
+(define stateRestOfValues cdadr)
+(define stateRestOfVars cdar)
 
 (define lambdavv (lambda (v) v))
 
+; This function finds which layer the variable is located in
+; When the layer is found, it calls addValToLayer to add the var and val to the correct layer
 (define Mstate.add
   (lambda (var value state)
     (cond
@@ -191,8 +181,7 @@ pretty hard to tell what is going on.
       ((member*? var (firstStateVariables state)) (cons (Mstate.addValToLayer var value (firstState state) lambdavv) (popState state)))
       (else (cons (firstState state) (Mstate.add var value (popState state)))))))
 
-; Takes a variable and removes its value from the state
-; Mstate because removes value from state assigned to variable
+; Removes the variable value from the state and adds an empty list as a place holder
 (define Mstate.removeValFromLayer
   (lambda (var state)
     (cond
@@ -203,7 +192,8 @@ pretty hard to tell what is going on.
 
 (define firstVarName caar)
 
-
+; Finds the correct layer the variable is in
+; When it finds the layer it calls removeValFromLayer to remove the val from layer
 (define Mstate.remove
   (lambda (var state)
     (cond
@@ -211,7 +201,7 @@ pretty hard to tell what is going on.
       ((member*? var (firstStateVariables state)) (cons (Mstate.removeValFromLayer var (firstState state)) (popState state)))
       (else (cons (firstState state) (Mstate.remove var (popState state)))))))
 
-; Gets the value of the variable from the state or throws error if it does not have one
+; Gets the value of the variable from the layer or throws error if it does not have one
 ; Mstate because returns the state of a variable
 (define Mstate.getValFromLayer
   (lambda (var state)
@@ -222,6 +212,7 @@ pretty hard to tell what is going on.
       ;(else (Mstate.getValFromLayer var (cdr state))))))
       (else (Mstate.getValFromLayer var (list (cdar state) (cdadr state))))))) ; call recursively removing item from first and second lists of state
 
+; Finds the correct layer that the variable is in
 (define Mstate.getstate
   (lambda (var state)
     (cond
@@ -232,12 +223,6 @@ pretty hard to tell what is going on.
 ;====================================================
 ;Helper functions
 ;====================================================
-
-(define iterateFirstState
-  (lambda (state)
-    (cond
-      ((null? state) (error 'stateWasNull))
-      (else (cons (cons (cons (cdaar state) (cddar state)) (popState state)))))))
 
 ; Check if a "-" symbol is for a negative number or a minus sign
 (define isNegativeNumber
@@ -296,14 +281,13 @@ pretty hard to tell what is going on.
 ;*****TESTING*********
 ;====================================================
 
-;(interpret "tests/1.txt")
-;(interpret "tests/2.txt")
-;(interpret "tests/3.txt")
-;(interpret "tests/4.txt")
-;(interpret "tests/5.txt")
+(interpret "tests/1.txt")
+(interpret "tests/2.txt")
+(interpret "tests/3.txt")
+(interpret "tests/4.txt")
+(interpret "tests/5.txt")
 ;(interpret "tests/6.txt")
-;(statement '((begin (if (> result 15) (begin (return result))) (= result (+ result x)) (= x (+ x 1)))) '((result x) (21 7)))
-(interpret "tests/7.txt")
+;(interpret "tests/7.txt")
 ;(interpret "tests/8.txt")(interpret "tests/9.txt")(interpret "tests/10.txt")
 ;(interpret "tests/11.txt")
 ;(interpret "tests/12.txt")
