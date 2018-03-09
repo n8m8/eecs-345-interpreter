@@ -21,47 +21,71 @@
   (lambda (tree state)
     (call/cc
      (lambda (break)
-       (statement-cc tree state break (lambda (v) (error 'ContinueCalledOutsideLoop)) (lambda (b) (error 'BreakCalledOutsideLoop)))))))
+       (statement-cc tree state break (lambda (v) (error 'ContinueCalledOutsideLoop)) (lambda (b) (error 'BreakCalledOutsideLoop)) (lambda (lmao) (error lmao)))))))
 
 ; Check what kind of statement and interpret accordingly (ex. return, var, if, while, or =)
 (define statement-cc
-  (lambda (tree state break whileContinue whileBreak)
+  (lambda (tree state break whileContinue whileBreak throw)
     (cond
       ((null? tree) state)
       ((equal? (firstSymbol tree) 'return) (break (fixtf (Mboolean.return (returnValue tree) state))))
-      ((eq? (firstSymbol tree) 'var) (statement-cc (restOfParseTree tree) (Mstate.declare (statementWithoutSymbol tree) state) break whileContinue whileBreak))
-      ((eq? (firstSymbol tree) 'if) (statement-cc (restOfParseTree tree) (Mstate.if (statementWithoutSymbol tree) state break whileContinue whileBreak) break whileContinue whileBreak)) 
+      ((eq? (firstSymbol tree) 'var) (statement-cc (restOfParseTree tree) (Mstate.declare (statementWithoutSymbol tree) state) break whileContinue whileBreak throw))
+      ((eq? (firstSymbol tree) 'if) (statement-cc (restOfParseTree tree) (Mstate.if (statementWithoutSymbol tree) state break whileContinue whileBreak throw) break whileContinue whileBreak throw)) 
       ((eq? (firstSymbol tree) 'while) (statement-cc (restOfParseTree tree)
                                                      (call/cc
                                                       (lambda (nestedWhileBreak)
                                                            (statement-cc (restOfParseTree tree)
-                                                                 (Mstate.while (statementWithoutSymbol tree) state break whileContinue nestedWhileBreak)
-                                                                 break whileContinue nestedWhileBreak))) break whileContinue whileBreak))
-      ((eq? (firstSymbol tree) '=) (statement-cc (restOfParseTree tree) (Mstate.assign (statementWithoutSymbol tree) state) break whileContinue whileBreak))
+                                                                 (Mstate.while (statementWithoutSymbol tree) state break whileContinue nestedWhileBreak throw)
+                                                                 break whileContinue nestedWhileBreak throw))) break whileContinue whileBreak throw))
+      ((eq? (firstSymbol tree) '=) (statement-cc (restOfParseTree tree) (Mstate.assign (statementWithoutSymbol tree) state) break whileContinue whileBreak throw))
       ((eq? (firstSymbol tree) 'begin) (statement-cc (restOfParseTree tree)
-                                                     (removeLocalState (statement-cc (statementWithoutSymbol tree) (addLocalState initialState state) break whileContinue whileBreak)) break whileContinue whileBreak))
+                                                     (removeLocalState (statement-cc (statementWithoutSymbol tree) (addLocalState initialState state) break whileContinue whileBreak throw)) break whileContinue whileBreak throw))
       ((eq? (firstSymbol tree) 'continue) (whileContinue (popState state)))
       ((eq? (firstSymbol tree) 'break) (whileBreak (popState state)))
-      ((eq? (firstSymbol tree) 'try) (statement-cc (restOfParseTree tree) (Mstate.try (statementWithoutSymbol tree) state break whileContinue whileBreak) break whileContinue whileBreak))
-      ((eq? (firstSymbol tree) 'catch) state) ;placeholder
-      ((eq? (firstSymbol tree) 'throw) state) ;placeholder
-      ((eq? (firstSymbol tree) 'finally) (statement-cc (insideFinallyStatement tree) state break whileContinue whileBreak))
+      ((eq? (firstSymbol tree) 'try) (statement-cc (restOfParseTree tree) (Mstate.try (statementWithoutSymbol tree) state break whileContinue whileBreak throw) break whileContinue whileBreak throw))
+      ((eq? (firstSymbol tree) 'throw) (throw (addLocalState (Mstate.addValToLayer 'throw (Mboolean.return (trimthrowClause (statementWithoutSymbol tree)) state) initialState lambdavv) state)))
+      ((eq? (firstSymbol tree) 'finally) (statement-cc (insideFinallyStatement tree) state break whileContinue whileBreak throw))
       (else (error 'InvalidStatement)))))
 
 (define insideFinallyStatement cadar)
 (define statementWithoutSymbol cdar)
 (define tryStatement car)
 (define finallyStatement cddr)
+(define trimthrowClause car)
 
 (define Mstate.try
-  (lambda (tree state break whileContinue whileBreak)
+  (lambda (tree state break whileContinue whileBreak throw)
     (cond
       ((null? tree) state)
-      (else (statement-cc (finallyStatement tree) (statement-cc (tryStatement tree) state break whileContinue whileBreak) break whileContinue whileBreak)))))
+      (else (statement-cc (finallyStatement tree)
+                          (Mstate.catch (catchStatement tree)
+                                        (call/cc
+                                         (lambda (nestedThrow)
+                                           (statement-cc (tryStatement tree) state break whileContinue whileBreak nestedThrow)))
+                                        break whileContinue whileBreak throw)
+                          break whileContinue whileBreak throw)))))
 
 (define continue
   (lambda (state c)
     (c)))
+
+(define catchStatement cdadr)
+
+(define Mstate.catch
+  (lambda (statement state break whileContinue whileBreak throw)
+    (cond
+      ((null? statement) 'CatchStatementNotDefined)
+      ((member*? 'throw state) (statement-cc (cadr statement) (Mstate.declare (list (getCatchVar statement) (Mvalue.getVal 'throw state)) state) break whileContinue whileBreak throw))
+      (else state))))
+
+(define getCatchVar caar)
+
+#|(define assignThrownValueToVar
+  (lambda (newVal state)
+    (cond
+      ((null? newVal) state)
+      ((member*? 'throw state) ())
+      (else (error 'TriedToAssignThrownValueToVarButNoThrownVar)))))|#
 
 ; Adds a new layer to the state for local variables
 (define addLocalState
@@ -83,9 +107,9 @@
     (cond
       ((null? op) '())
       ((number? op) op)
-      ((member*? op state) (if (null? (Mstate.getstate op state)) ; need to check if it's a variable right here
+      ((member*? op state) (if (null? (Mvalue.getVal op state)) ; need to check if it's a variable right here
                                  (error 'VariableWasNotAssigned)
-                                 (Mstate.getstate op state)))
+                                 (Mvalue.getVal op state)))
       ((eq? op 'true) 'true)
       ((eq? op 'false) 'false)
       ((not (list?  op)) (error 'VariableInExpressionNotDeclaredYet))
@@ -109,9 +133,9 @@
     (cond
       ((null? expr) '())
       ((number? expr) expr)
-      ((member*? expr state) (if (null? (Mstate.getstate expr state)) ; need to check if it's a variable right here
+      ((member*? expr state) (if (null? (Mvalue.getVal expr state)) ; need to check if it's a variable right here
                                  (error 'VariableWasNotAssigned)
-                                 (Mstate.getstate expr state)))
+                                 (Mvalue.getVal expr state)))
       ((not (list?  expr)) (error 'VariableInExpressionNotDeclared))
       ((eq? '+ (operator expr)) (+ (Mvalue.expression (operand1 expr) state) (Mvalue.expression (operand2 expr) state)))
       ((eq? '- (operator expr))
@@ -141,6 +165,7 @@
 (define hasValue cdr)
 (define variableValue cadr)
 (define variableName car)
+(define addNewStateLayer (lambda (var value state return) (cons (Mstate.addValToLayer var value (firstState state) lambdavv) (popState state))))
 
 
 ; Check if the variable is part of the state.
@@ -162,37 +187,37 @@
 ; changes the state using the else statement
 ; Mstate because it changes the state according to the conditional statement
 (define Mstate.if
-  (lambda (ifstmt state break whileContinue whileBreak)
+  (lambda (ifstmt state break whileContinue whileBreak throw)
     (cond
       ((null? ifstmt) state)
-      ((eq? (fixtf (Mboolean.return (conditionalStatement ifstmt) state)) 'true)(statement-cc (cons (statement1 ifstmt) '()) state break whileContinue whileBreak)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((eq? (Mboolean.return (conditionalStatement ifstmt) state) 'false)(statement-cc (cons (statement2 ifstmt) '()) state break whileContinue whileBreak)) ; need to cons with '() so that statement can evaluate firststatement (caar)
-      ((Mboolean.return (conditionalStatement ifstmt) state) (statement-cc (cons (statement1 ifstmt) '()) state break whileContinue whileBreak))
+      ((eq? (fixtf (Mboolean.return (conditionalStatement ifstmt) state)) 'true)(statement-cc (cons (statement1 ifstmt) '()) state break whileContinue whileBreak throw)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((eq? (Mboolean.return (conditionalStatement ifstmt) state) 'false)(statement-cc (cons (statement2 ifstmt) '()) state break whileContinue whileBreak throw)) ; need to cons with '() so that statement can evaluate firststatement (caar)
+      ((Mboolean.return (conditionalStatement ifstmt) state) (statement-cc (cons (statement1 ifstmt) '()) state break whileContinue whileBreak throw))
       ((null? (cddr ifstmt)) state) ; checks if there is an 'else' statement
-      (else (statement-cc (cons (statement2 ifstmt) '()) state break whileContinue whileBreak)))))
+      (else (statement-cc (cons (statement2 ifstmt) '()) state break whileContinue whileBreak throw)))))
 
 ; Mstate.while statement: loops if while statement is true, updating the state or
 ; (second line checks if #t instead of true for while loop), otherwise return
 ; state
 ; Mstate because changes variable state as long as while condition is true
 (define Mstate.while-cc
-  (lambda (Mstate.whileloop state break whileContinue whileBreak)
+  (lambda (Mstate.whileloop state break whileContinue whileBreak throw)
     (cond
       ((null? Mstate.whileloop) state)
-      ((Mboolean.return (conditionalStatement Mstate.whileloop) state) (Mstate.while-cc Mstate.whileloop (statement-cc (cons (statement1 Mstate.whileloop) '()) state break whileContinue whileBreak) break whileContinue whileBreak))
+      ((Mboolean.return (conditionalStatement Mstate.whileloop) state) (Mstate.while-cc Mstate.whileloop (statement-cc (cons (statement1 Mstate.whileloop) '()) state break whileContinue whileBreak throw) break whileContinue whileBreak throw))
       (else state))))
 
 
 (define Mstate.while
-  (lambda (Mstate.whileloop state break whileContinue whileBreak)
+  (lambda (Mstate.whileloop state break whileContinue whileBreak throw)
     (cond
       ((null? Mstate.whileloop) state)
       ((Mboolean.return (conditionalStatement Mstate.whileloop) state) (Mstate.while Mstate.whileloop
                     (call/cc
                      (lambda (nestedWhileContinue)
-                       (Mstate.while-cc Mstate.whileloop state break nestedWhileContinue whileBreak))
+                       (Mstate.while-cc Mstate.whileloop state break nestedWhileContinue whileBreak throw))
                      )
-                     break whileContinue whileBreak))
+                     break whileContinue whileBreak throw))
       (else state))))
 
 ; Adds the variable and the variable's value to the top most layer
@@ -246,22 +271,22 @@
 
 ; Gets the value of the variable from the layer or throws error if it does not have one
 ; Mstate because returns the state of a variable
-(define Mstate.getValFromLayer
+(define Mvalue.getValFromLayer
   (lambda (var state)
     (cond
       ((null? state) (error 'itemDoesNotExist)) 
       ((eq? (caar state) var) (caadr state))
       ((null? (cdr state)) (error 'VariableNotAssignedValue))
-      ;(else (Mstate.getValFromLayer var (cdr state))))))
-      (else (Mstate.getValFromLayer var (list (cdar state) (cdadr state))))))) ; call recursively removing item from first and second lists of state
+      ;(else (Mvalue.getValFromLayer var (cdr state))))))
+      (else (Mvalue.getValFromLayer var (list (cdar state) (cdadr state))))))) ; call recursively removing item from first and second lists of state
 
 ; Finds the correct layer that the variable is in
-(define Mstate.getstate
+(define Mvalue.getVal
   (lambda (var state)
     (cond
       ((null? state) (error 'itemDoesNotExist))
-      ((member*? var (firstStateVariables state)) (Mstate.getValFromLayer var (firstState state)))
-      (else (Mstate.getstate var (popState state))))))
+      ((member*? var (firstStateVariables state)) (Mvalue.getValFromLayer var (firstState state)))
+      (else (Mvalue.getVal var (popState state))))))
 
 ;====================================================
 ;Helper functions
@@ -319,23 +344,23 @@
 ;====================================================
 
 ;(interpret "tests/0.txt")
-;(interpret "tests/1.txt")
-;(interpret "tests/2.txt")
-;(interpret "tests/3.txt")
-;(interpret "tests/4.txt")
+(interpret "tests/1.txt")
+(interpret "tests/2.txt")
+(interpret "tests/3.txt")
+(interpret "tests/4.txt")
 ;(interpret "tests/5.txt")
-;(interpret "tests/6.txt")
-;(interpret "tests/7.txt")
-;(interpret "tests/8.txt")
-;(interpret "tests/9.txt")
-;(interpret "tests/10.txt")
+(interpret "tests/6.txt")
+(interpret "tests/7.txt")
+(interpret "tests/8.txt")
+(interpret "tests/9.txt")
+(interpret "tests/10.txt")
 ;(interpret "tests/11.txt")
 ;(interpret "tests/12.txt")
 ;(interpret "tests/13.txt")
-;(interpret "tests/14.txt")
+(interpret "tests/14.txt")
 (interpret "tests/15.txt")
-;(interpret "tests/16.txt")
-;(interpret "tests/17.txt")
-;(interpret "tests/18.txt")
+(interpret "tests/16.txt")
+(interpret "tests/17.txt")
+(interpret "tests/18.txt")
 ;(interpret "tests/19.txt")
 ;(interpret "tests/20.txt")
