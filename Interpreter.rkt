@@ -42,9 +42,22 @@
                                                      (removeLocalState (statement-cc (statementWithoutSymbol tree) (addLocalState initialState state) break whileContinue whileBreak)) break whileContinue whileBreak))
       ((eq? (firstSymbol tree) 'continue) (whileContinue (popState state)))
       ((eq? (firstSymbol tree) 'break) (whileBreak (popState state)))
-      ((eq? (firstSymbol tree) 'try) (doSomething))
-      ;((eq? (firstSymbol tree) 'throw) (doSomething))
+      ((eq? (firstSymbol tree) 'try) (statement-cc (restOfParseTree tree) (Mstate.try (statementWithoutSymbol tree) state break whileContinue whileBreak) break whileContinue whileBreak))
+      ((eq? (firstSymbol tree) 'catch) state) ;placeholder
+      ((eq? (firstSymbol tree) 'throw) state) ;placeholder
+      ((eq? (firstSymbol tree) 'finally) (statement-cc (insideFinallyStatement tree) state break whileContinue whileBreak))
       (else (error 'InvalidStatement)))))
+
+(define insideFinallyStatement cadar)
+(define statementWithoutSymbol cdar)
+(define tryStatement car)
+(define finallyStatement cddr)
+
+(define Mstate.try
+  (lambda (tree state break whileContinue whileBreak)
+    (cond
+      ((null? tree) state)
+      (else (statement-cc (finallyStatement tree) (statement-cc (tryStatement tree) state break whileContinue whileBreak) break whileContinue whileBreak)))))
 
 (define continue
   (lambda (state c)
@@ -121,10 +134,15 @@
   (lambda (declaration state)
     (cond
       ((null? state) 'StateUnDeclared) ;should never really be reached but here for safety
-      ((null? (variableValue declaration)) (cons (Mstate.addValToLayer (variableName declaration) '() (firstState state)) (popState state)))
+      ((null? (hasValue declaration)) (cons (Mstate.addValToLayer (variableName declaration) '() (firstState state) lambdavv) (popState state)))
       ((member*? (variableName declaration) state) (error 'RedefiningError)) 
       (else (cons (Mstate.addValToLayer (variableName declaration) (Mvalue.expression (variableValue declaration) state) (firstState state) lambdavv) (popState state))))))
-      
+
+(define hasValue cdr)
+(define variableValue cadr)
+(define variableName car)
+
+
 ; Check if the variable is part of the state.
 ; If it is part of the state, remove its value
 ; Add the new value to the state
@@ -283,13 +301,10 @@
 (define initialState '(()()))
 (define firstSymbol caar)
 (define firstStatement car)
-(define statementWithoutSymbol cdar)
 (define firstBoolExpression cadr)
 (define secondBoolExpression caddr)
 (define returnValue cadar)
 (define restOfParseTree cdr)
-(define variableValue cadr)
-(define variableName car)
 (define variablesOfState car)
 (define valuesOfState cadr)
 (define conditionalStatement car)
@@ -318,7 +333,7 @@
 ;(interpret "tests/12.txt")
 ;(interpret "tests/13.txt")
 ;(interpret "tests/14.txt")
-;(interpret "tests/15.txt")
+(interpret "tests/15.txt")
 ;(interpret "tests/16.txt")
 ;(interpret "tests/17.txt")
 ;(interpret "tests/18.txt")
