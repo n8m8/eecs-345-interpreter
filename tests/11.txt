@@ -1,11 +1,16 @@
 var x = 0;
-while (x < 10) {
-  var y = 0;
-  x = x + 1;
-  y = y - 1;
-  break;
+var y = 0;
+
+function setx(a) {
+  x = a;
 }
-if (x > 0) {
-  x = y;
+
+function sety(b) {
+  y = b;
 }
-return x;
+
+function main() {
+  setx(5);
+  sety(7);
+  return x * y;
+}

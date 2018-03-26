@@ -1,26 +1,18 @@
-var x = 0;
-var j = 1;
-
-try {
-  while (j >= 0) {
-    var i = 10;
-    while (i >= 0) {
-      try {
-        if (i == 0)
-          throw 1000000;
-        x = x + 10*i / i;
-      }
-      catch(e) {
-        if (j == 0)
-          throw 1000000;
-        x = x + e / j;
-      }
-      i = i - 1;
-    }
-    j = j - 1;
+function f(x) {
+  function g(x) {
+    var b;
+    b = x;
+    return 0;
   }
+
+  function h(x) {
+    b = x;
+    return 1;
+  }
+
+  return g(x) + h(x);
 }
-catch (e2) {
-  x = x * 2;
+
+function main() {
+  return f(10);
 }
-return x;

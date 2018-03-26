@@ -1,7 +1,11 @@
-var x = 0;
+var x = 1;
 var y = 10;
-while (!(x >= y) || !(y > 25)) {
-  x = x + 2;
-  y = y + 1;
+var r = 0;
+
+function main() {
+  while (x < y) {
+     r = r + x;
+     x = x + 1;
+  }
+  return r;
 }
-return x;

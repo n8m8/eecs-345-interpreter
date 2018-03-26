@@ -1,7 +1,17 @@
-var x = 0;
-while (x < 6) {
-  x = x + 1;
-  continue;
-  x = x + 100;
+function fact(n) {
+  var f = 1;
+  while (n > 1) {
+    f = f * n;
+    n = n - 1;
+  }
+  return f;
 }
-return x;
+
+function binom(a, b) {
+  var val = fact(a) / (fact(b) * fact(a-b));
+  return val;
+}
+
+function main() {
+  return binom(6,3);
+}

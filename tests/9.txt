@@ -1,7 +1,12 @@
-var x = 0;
-while (x < 10) {
-  x = x - 1;
-  break;
-  x = x + 100;
+function fact(n) {
+  var r = 1;
+  while (n > 1) {
+    r = r * n;
+    n = n - 1;
+  }
+  return r;
 }
-return x;
+
+function main() {
+  return fact(fact(3) - fact(2));
+}

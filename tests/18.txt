@@ -1,20 +1,21 @@
-var x = 10;
-var result = 1;
+function divide(x, y) {
+  if (y == 0)
+    throw y;
+  return x / y;
+}
 
-try {
-  while (x < 10000) {
-     result = result - 1;
-     x = x + 10;
+function main() {
+  var x;
 
-     if (x > 1000) {
-       throw x;
-     }
-     else if (x > 100) {
-        break;
-     }
+  try {
+    x = divide(10, 5) * 10;
+    x = x + divide(5, 1);
   }
+  catch(e) {
+    x = e;
+  }
+  finally {
+    x = x + 100;
+  }
+  return x;
 }
-finally {
-  result = result + x;
-}
-return result;

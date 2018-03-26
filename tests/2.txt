@@ -1,9 +1,6 @@
-var a = 31160;
-var b = 1476;
-var r = a % b;
-while (r != 0) {
-  a = b;
-  b = r;
-  r = a % b;
+var x = 4;
+var y = 6 + x;
+
+function main() {
+  return x + y;
 }
-return b;
