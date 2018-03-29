@@ -53,10 +53,12 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
+      ((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-funcall statement) environment return break continue throw))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 (define statement-type car)
 (define statement-without-func cdr)
+(define statement-without-funcall statement-without-func)
 
 ; Calls the return continuation with the given expression value
 (define interpret-return
@@ -156,19 +158,31 @@
 (define add-function-to-environment
   (lambda (function-name parameters function-body environment)
     (cond
-      ((null? parameters) (insert function-name function-body environment))
-      (else (0)))))
+      ((null? parameters) (insert function-name function-body environment)) ;checks for parameters
+      (else (0))))) ;idk what to do with parameters yet
 
 (define func-name car)
 (define func-param cadr)
 (define func-body caddr)
 
+; Evaluates the function 'main
 (define evaluate-main-function
   (lambda (environment return break continue throw)
     (cond
       ((null? environment) environment) ;this should check if main is associated with a statement list in the env
       (else (interpret-statement-list (lookup 'main environment) environment return break continue throw)))))
 
+; evaluates a funcall. Funcall here is for example (amethod 1 2 3) or (bmethod)
+; Idk what to do with parameters so . . .
+(define interpret-funcall
+  (lambda (funcall environment return break continue throw)
+    (cond
+      ((not (exists? (function-name funcall))) (myerror "Function does not exist")) ;checks if the function exists
+      ((null? (parameters funcall)) (return 1)) ;checks if there are parameters
+      (else (return 1)))))
+
+(define function-name car)
+(define parameters cdr)
 ; helper methods so that I can reuse the interpret-block method on the try and finally blocks
 (define make-try-block
   (lambda (try-statement)
@@ -439,7 +453,7 @@
 ;(interpret "tests/1.txt") ;10
 ;(interpret "tests/2.txt") ;14
 ;(interpret "tests/3.txt") ;45
-;(interpret "tests/4.txt") ;55
+(interpret "tests/4.txt") ;55
 ;(interpret "tests/5.txt") ;1
 ;(interpret "tests/6.txt") ;115
 ;(interpret "tests/7.txt") ;true
