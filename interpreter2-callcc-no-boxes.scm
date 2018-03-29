@@ -6,8 +6,6 @@
 #lang racket
 (require "functionParser.scm")
 ; (load "functionParser.scm")
-
-
 ; An interpreter for the simple language that uses call/cc for the continuations.  Does not handle side effects.
 (define call/cc call-with-current-continuation)
 
@@ -26,10 +24,18 @@
                                   (lambda (v env) (myerror "Uncaught exception thrown"))))))))
 
 ; interprets a list of statements.  The environment from each statement is used for the next ones.
+;Useful for debugging and not interpretting main
+#|
 (define interpret-statement-list
   (lambda (statement-list environment return break continue throw)
     (if (null? statement-list)
         environment
+        (interpret-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
+|#
+(define interpret-statement-list
+  (lambda (statement-list environment return break continue throw)
+    (if (null? statement-list)
+        (evaluate-main-function environment return break continue throw)
         (interpret-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
 
 ; interpret a statement in the environment with continuations for return, break, continue, throw
@@ -46,7 +52,11 @@
       ((eq? 'begin (statement-type statement)) (interpret-block statement environment return break continue throw))
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
+      ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
       (else (myerror "Unknown statement:" (statement-type statement))))))
+
+(define statement-type car)
+(define statement-without-func cdr)
 
 ; Calls the return continuation with the given expression value
 (define interpret-return
@@ -135,6 +145,30 @@
                           (interpret-block try-block environment new-return new-break new-continue new-throw)
                           return break continue throw))))))
 
+; To interpret a function and add it to the environment
+(define interpret-function
+  (lambda (statement environment return break continue throw)
+    (cond
+      ((null? (func-body statement)) environment) ;checks if the function is empty
+      (else (add-function-to-environment (func-name statement) (func-param statement) (func-body statement) environment))))) ;checks if there are any parameters
+
+; Adds the function to the environment with parameters passed in
+(define add-function-to-environment
+  (lambda (function-name parameters function-body environment)
+    (cond
+      ((null? parameters) (insert function-name function-body environment))
+      (else (0)))))
+
+(define func-name car)
+(define func-param cadr)
+(define func-body caddr)
+
+(define evaluate-main-function
+  (lambda (environment return break continue throw)
+    (cond
+      ((null? environment) environment) ;this should check if main is associated with a statement list in the env
+      (else (interpret-statement-list (lookup 'main environment) environment return break continue throw)))))
+
 ; helper methods so that I can reuse the interpret-block method on the try and finally blocks
 (define make-try-block
   (lambda (try-statement)
@@ -213,7 +247,6 @@
     (not (null? (cdddr statement)))))
 
 ; these helper functions define the parts of the various statement types
-(define statement-type operator)
 (define get-expr operand1)
 (define get-declare-var operand1)
 (define get-declare-value operand2)
@@ -399,3 +432,27 @@
                             (makestr (string-append str (string-append " " (symbol->string (car vals)))) (cdr vals))))))
       (error-break (display (string-append str (makestr "" vals)))))))
 
+;------------------------
+; Tests
+;------------------------
+;(interpret "tests/0.txt") ;15
+;(interpret "tests/1.txt") ;10
+;(interpret "tests/2.txt") ;14
+;(interpret "tests/3.txt") ;45
+;(interpret "tests/4.txt") ;55
+;(interpret "tests/5.txt") ;1
+;(interpret "tests/6.txt") ;115
+;(interpret "tests/7.txt") ;true
+;(interpret "tests/8.txt") ;20
+;(interpret "tests/9.txt") ;24
+;(interpret "tests/10.txt") ;2
+;(interpret "tests/11.txt") ;35
+;(interpret "tests/12.txt") ;Error mismatched params and args
+;(interpret "tests/13.txt") ;90
+;(interpret "tests/14.txt") ;69 ;ayylmao
+;(interpret "tests/15.txt") ;87
+;(interpret "tests/16.txt") ;64
+;(interpret "tests/17.txt") ;Error var out of scope
+;(interpret "tests/18.txt") ;125
+;(interpret "tests/19.txt") ;100
+;(interpret "tests/20.txt") ;2000400
