@@ -2,10 +2,9 @@
 ; Alex Marshall, awm48
 ; Nathan Walls, nfw10
 ; Anna Burkhart, alb171?
-; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
 #lang racket
 (require "functionParser.scm")
-; (load "functionParser.scm")
+
 ; An interpreter for the simple language that uses call/cc for the continuations.  Does not handle side effects.
 (define call/cc call-with-current-continuation)
 
@@ -25,18 +24,11 @@
 
 ; interprets a list of statements.  The environment from each statement is used for the next ones.
 ;Useful for debugging and not interpretting main
-#|
 (define interpret-statement-list
   (lambda (statement-list environment return break continue throw)
     (if (null? statement-list)
-        environment
-        (interpret-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
-|#
-(define interpret-statement-list
-  (lambda (statement-list environment return break continue throw)
-    (if (null? statement-list)
-        ;(evaluate-main-function environment return break continue throw)
-        environment
+        (evaluate-main-function environment return break continue throw)
+        ;environment ;this one is useful for debugging
         (interpret-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
 
 ; interpret a statement in the environment with continuations for return, break, continue, throw
@@ -162,8 +154,8 @@
 (define evaluate-main-function
   (lambda (environment return break continue throw)
     (cond
-      ((null? environment) environment) ;this should check if main is associated with a statement list in the env
-      (else (interpret-statement-list (lookup 'main environment) environment return break continue throw)))))
+      ((exists? 'main environment) (myerror "Main function does not exist")) ;this should check if main is associated with a statement list in the env
+      (else (interpret-statement-list (lookup 'main environment) (push-frame(environment)) return break continue throw)))))
 
 ; evaluates a funcall. Funcall here is for example (amethod 1 2 3) or (bmethod)
 ; Idk what to do with parameters so . . .
@@ -171,11 +163,12 @@
   (lambda (funcall environment return break continue throw)
     (cond
       ((not (exists? (function-name funcall))) (myerror "Function does not exist")) ;checks if the function exists
-      ((null? (parameters funcall)) (interpret-statement-list (lookup function-name funcall) (push-frame(environment)) return break continue throw)) ;checks if there are parameters
+      ((null? (parameters funcall)) (interpret-statement-list (cdr (lookup function-name funcall)) (push-frame(environment)) return break continue throw)) ;checks if there are parameters
       (else (return 1)))))
 
 (define function-name car)
 (define parameters cdr)
+
 ; helper methods so that I can reuse the interpret-block method on the try and finally blocks
 (define make-try-block
   (lambda (try-statement)
