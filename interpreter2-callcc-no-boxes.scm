@@ -126,7 +126,7 @@
                                      return break continue throw)))))))
 
 ; To interpret a try block, we must adjust  the return, break, continue continuations to interpret the finally block if any of them are used.
-;  We must create a new throw continuation and then interpret the try block with the new continuations followed by the finally block with the old continuations
+; We must create a new throw continuation and then interpret the try block with the new continuations followed by the finally block with the old continuations
 (define interpret-try
   (lambda (statement environment return break continue throw)
     (call/cc
@@ -162,15 +162,18 @@
 ; Idk what to do with parameters so . . .
 (define interpret-funcall
   (lambda (funcall environment return break continue throw)
-    (cond
-      ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
-      ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame environment) return break continue throw)) ;checks if there are parameters
-      (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (insert (function-name (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment)) return break continue throw)))))
+    (call/cc
+     (lambda (func-break)
+       (cond
+         ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
+         ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame environment) return func-break continue throw)) ;checks if there are parameters
+         (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (insert (function-name (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment)) return func-break continue throw)))))))
 
 (define function-name car)
 (define parameters cdr)
 
 ; The same as interpret-statement-list except at the end it returns the environment
+; idk what to do with breaks and stuff
 (define interpret-function-statement-list
   (lambda (statement-list environment return break continue throw)
     (if (null? statement-list)
@@ -226,7 +229,7 @@
       ((eq? '>= (operator expr)) (>= op1value (eval-expression (operand2 expr) environment)))
       ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment)))
       ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment)))
-      ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment)) ;will need to add new return break continue throw
+      ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment )) ;will need to add new return break continue throw
       (else (myerror "Unknown operator:" (operator expr))))))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
