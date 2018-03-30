@@ -154,20 +154,27 @@
 (define evaluate-main-function
   (lambda (environment return break continue throw)
     (cond
-      ((exists? 'main environment) (myerror "Main function does not exist")) ;this should check if main is associated with a statement list in the env
-      (else (interpret-statement-list (lookup 'main environment) (push-frame(environment)) return break continue throw)))))
+      ((not (exists? 'main environment)) (myerror "Main function does not exist")) ;this should check if main is associated with a statement list in the env
+      (else (interpret-statement-list (cadr (lookup 'main environment)) (push-frame environment) return break continue throw)))))
 
 ; evaluates a funcall. Funcall here is for example (amethod 1 2 3) or (bmethod)
 ; Idk what to do with parameters so . . .
 (define interpret-funcall
   (lambda (funcall environment return break continue throw)
     (cond
-      ((not (exists? (function-name funcall))) (myerror "Function does not exist")) ;checks if the function exists
-      ((null? (parameters funcall)) (interpret-statement-list (cdr (lookup function-name funcall)) (push-frame(environment)) return break continue throw)) ;checks if there are parameters
-      (else (return 1)))))
+      ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
+      ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame environment) return break continue throw)) ;checks if there are parameters
+      (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (insert (function-name (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment)) return break continue throw)))))
 
 (define function-name car)
 (define parameters cdr)
+
+; The same as interpret-statement-list except at the end it returns the environment
+(define interpret-function-statement-list
+  (lambda (statement-list environment return break continue throw)
+    (if (null? statement-list)
+        (pop-frame environment) ;this one is useful for debugging
+        (interpret-function-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
 
 ; helper methods so that I can reuse the interpret-block method on the try and finally blocks
 (define make-try-block
@@ -218,6 +225,7 @@
       ((eq? '>= (operator expr)) (>= op1value (eval-expression (operand2 expr) environment)))
       ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment)))
       ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment)))
+      ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment)) ;will need to add new return break continue throw
       (else (myerror "Unknown operator:" (operator expr))))))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
