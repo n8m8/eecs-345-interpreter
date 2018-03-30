@@ -35,7 +35,8 @@
 (define interpret-statement-list
   (lambda (statement-list environment return break continue throw)
     (if (null? statement-list)
-        (evaluate-main-function environment return break continue throw)
+        ;(evaluate-main-function environment return break continue throw)
+        environment
         (interpret-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
 
 ; interpret a statement in the environment with continuations for return, break, continue, throw
@@ -151,19 +152,11 @@
 (define interpret-function
   (lambda (statement environment return break continue throw)
     (cond
-      ((null? (func-body statement)) environment) ;checks if the function is empty
-      (else (add-function-to-environment (func-name statement) (func-param statement) (func-body statement) environment))))) ;checks if there are any parameters
-
-; Adds the function to the environment with parameters passed in
-(define add-function-to-environment
-  (lambda (function-name parameters function-body environment)
-    (cond
-      ((null? parameters) (insert function-name function-body environment)) ;checks for parameters
-      (else (0))))) ;idk what to do with parameters yet
+      ((null? (func-body statement)) environment) ;checks if the function body is empty
+      (else (insert (func-name statement) (func-body statement) environment))))) ;checks if there are any parameters
 
 (define func-name car)
-(define func-param cadr)
-(define func-body caddr)
+(define func-body cdr)
 
 ; Evaluates the function 'main
 (define evaluate-main-function
@@ -178,7 +171,7 @@
   (lambda (funcall environment return break continue throw)
     (cond
       ((not (exists? (function-name funcall))) (myerror "Function does not exist")) ;checks if the function exists
-      ((null? (parameters funcall)) (return 1)) ;checks if there are parameters
+      ((null? (parameters funcall)) (interpret-statement-list (lookup function-name funcall) (push-frame(environment)) return break continue throw)) ;checks if there are parameters
       (else (return 1)))))
 
 (define function-name car)
@@ -453,7 +446,7 @@
 ;(interpret "tests/1.txt") ;10
 ;(interpret "tests/2.txt") ;14
 ;(interpret "tests/3.txt") ;45
-(interpret "tests/4.txt") ;55
+;(interpret "tests/4.txt") ;55
 ;(interpret "tests/5.txt") ;1
 ;(interpret "tests/6.txt") ;115
 ;(interpret "tests/7.txt") ;true

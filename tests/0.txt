@@ -1,10 +1,8 @@
-function amethod(a, b, ab){
-
-}
-function bmethod(){
-
+var x = 1;
+function amethod(){
+  x = x + 1;
 }
 function main() {
-  var x = 10;
-  return x + 5;
+  amethod();
+  return x;
 }
