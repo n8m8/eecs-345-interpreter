@@ -1,5 +1,5 @@
 var x = 1;
-function amethod(){
+function amethod() {
   x = x + 1;
 }
 function main() {
