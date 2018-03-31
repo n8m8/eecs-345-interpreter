@@ -175,8 +175,8 @@
      (lambda (func-return)
        (cond
          ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
-         ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame environment) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
-         (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (add-parameters-to-environment (car (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
+         ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame (pop-frame environment)) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
+         (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (ignore-parent-env (add-parameters-to-environment (car (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw)) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
 
 (define function-name car)
 (define parameters cdr)
@@ -186,7 +186,11 @@
     (cond
       ((null? param-names) environment)
       ((list? param-names) (add-parameters-to-environment (cdr param-names) (cdr param-values) (insert (car param-names) (eval-expression (car param-values) (pop-frame environment) throw) environment) throw))
-      (else (insert param-names (eval-expression param-values environment) environment)))))
+      (else (insert param-names (eval-expression param-values (pop-frame environment)) environment)))))
+
+(define ignore-parent-env
+  (lambda (environment)
+    (cons (car environment) (cddr environment))))
 
 ; The same as interpret-statement-list except at the end it returns the environment
 ; idk what to do with breaks and stuff
@@ -463,14 +467,14 @@
 ;------------------------
 ; Tests
 ;------------------------
-(interpret "tests/0.txt") ;15
+;(interpret "tests/0.txt") ;15
 (interpret "tests/1.txt") ;10
 (interpret "tests/2.txt") ;14
 (interpret "tests/3.txt") ;45
 (interpret "tests/4.txt") ;55
 (interpret "tests/5.txt") ;1
-;(interpret "tests/6.txt") ;115
-;(interpret "tests/7.txt") ;true
+(interpret "tests/6.txt") ;115
+(interpret "tests/7.txt") ;true
 ;(interpret "tests/8.txt") ;20
 ;(interpret "tests/9.txt") ;24
 ;(interpret "tests/10.txt") ;2
