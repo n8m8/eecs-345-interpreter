@@ -185,7 +185,7 @@
   (lambda (param-names param-values environment throw)
     (cond
       ((null? param-names) environment)
-      ((list? param-names) (add-parameters-to-environment (cdr param-names) (cdr param-values) (insert (car param-names) (eval-expression (car param-values) environment throw) environment) throw))
+      ((list? param-names) (add-parameters-to-environment (cdr param-names) (cdr param-values) (insert (car param-names) (eval-expression (car param-values) (pop-frame environment) throw) environment) throw))
       (else (insert param-names (eval-expression param-values environment) environment)))))
 
 ; The same as interpret-statement-list except at the end it returns the environment
@@ -224,7 +224,7 @@
 (define eval-operator
   (lambda (expr environment throw)
     (cond
-      ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment)))
+      ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment throw)))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment)))
       (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment throw) environment throw)))))
 
@@ -463,7 +463,7 @@
 ;------------------------
 ; Tests
 ;------------------------
-;(interpret "tests/0.txt") ;15
+(interpret "tests/0.txt") ;15
 (interpret "tests/1.txt") ;10
 (interpret "tests/2.txt") ;14
 (interpret "tests/3.txt") ;45
