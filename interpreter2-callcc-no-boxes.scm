@@ -20,8 +20,17 @@
      (call/cc
       (lambda (return)
         (interpret-statement-list (parser file) (newenvironment) return
-                                  (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                                  (lambda (v env) (myerror "Uncaught exception thrown"))))))))
+                                  breakOutsideLoopError continueOutsideLoopError
+                                  uncaughtExceptionThrownError))))))
+
+(define breakOutsideLoopError
+  (lambda (env) (myerror "Break used outside loop")))
+
+(define continueOutsideLoopError
+  (lambda (env) (myerror "Continue used outside of loop")))
+
+(define uncaughtExceptionThrownError
+  (lambda (v env) (myerror "Uncaught exception thrown")))
 
 ; interprets a list of statements.  The environment from each statement is used for the next ones.
 ;Useful for debugging and not interpretting main
@@ -36,7 +45,7 @@
 (define interpret-statement
   (lambda (statement environment return break continue throw)
     (cond
-      ((eq? 'return (statement-type statement)) (interpret-return statement environment return))
+      ((eq? 'return (statement-type statement)) (interpret-return statement environment return throw))
       ((eq? 'var (statement-type statement)) (interpret-declare statement environment))
       ((eq? '= (statement-type statement)) (interpret-assign statement environment))
       ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw))
@@ -47,7 +56,7 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
-      ((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-funcall statement) environment return break continue throw))
+      ;((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-funcall statement) environment return break continue throw))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 (define statement-type car)
@@ -56,8 +65,8 @@
 
 ; Calls the return continuation with the given expression value
 (define interpret-return
-  (lambda (statement environment return)
-    (return (eval-expression (get-expr statement) environment))))
+  (lambda (statement environment return throw)
+    (return (eval-expression (get-expr statement) environment throw))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
@@ -161,16 +170,23 @@
 ; evaluates a funcall. Funcall here is for example (amethod 1 2 3) or (bmethod)
 ; Idk what to do with parameters so . . .
 (define interpret-funcall
-  (lambda (funcall environment return break continue throw)
+  (lambda (funcall environment throw)
     (call/cc
-     (lambda (func-break)
+     (lambda (func-return)
        (cond
          ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
-         ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame environment) return func-break continue throw)) ;checks if there are parameters
-         (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (insert (function-name (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment)) return func-break continue throw)))))))
+         ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame environment) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
+         (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (add-parameters-to-environment (car (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
 
 (define function-name car)
 (define parameters cdr)
+
+(define add-parameters-to-environment
+  (lambda (param-names param-values environment throw)
+    (cond
+      ((null? param-names) environment)
+      ((list? param-names) (add-parameters-to-environment (insert (car param-names) (eval-expression (car param-values) environment throw) environment) (cdr param-names) (cdr param-values)))
+      (else (insert param-names (eval-expression param-values environment) environment)))))
 
 ; The same as interpret-statement-list except at the end it returns the environment
 ; idk what to do with breaks and stuff
@@ -194,27 +210,27 @@
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
-  (lambda (expr environment)
+  (lambda (expr environment throw)
     (cond
       ((number? expr) expr)
       ((eq? expr 'true) #t)
       ((eq? expr 'false) #f)
       ((not (list? expr)) (lookup expr environment))
-      (else (eval-operator expr environment)))))
+      (else (eval-operator expr environment throw)))))
 
 ; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
 ; pass the result to eval-binary-op2 to evaluate the right operand.  This forces the operands to be evaluated in the proper order in case you choose
 ; to add side effects to the interpreter
 (define eval-operator
-  (lambda (expr environment)
+  (lambda (expr environment throw)
     (cond
       ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment)))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment)))
-      (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment) environment)))))
+      (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment throw) environment throw)))))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
 (define eval-binary-op2
-  (lambda (expr op1value environment)
+  (lambda (expr op1value environment throw)
     (cond
       ((eq? '+ (operator expr)) (+ op1value (eval-expression (operand2 expr) environment)))
       ((eq? '- (operator expr)) (- op1value (eval-expression (operand2 expr) environment)))
@@ -229,7 +245,7 @@
       ((eq? '>= (operator expr)) (>= op1value (eval-expression (operand2 expr) environment)))
       ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment)))
       ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment)))
-      ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment )) ;will need to add new return break continue throw
+      ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment throw)) ; will need to add new return break continue throw
       (else (myerror "Unknown operator:" (operator expr))))))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
@@ -451,7 +467,7 @@
 ;(interpret "tests/1.txt") ;10
 ;(interpret "tests/2.txt") ;14
 ;(interpret "tests/3.txt") ;45
-;(interpret "tests/4.txt") ;55
+(interpret "tests/4.txt") ;55
 ;(interpret "tests/5.txt") ;1
 ;(interpret "tests/6.txt") ;115
 ;(interpret "tests/7.txt") ;true
