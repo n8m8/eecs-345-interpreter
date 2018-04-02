@@ -21,7 +21,7 @@
       (lambda (return)
         (interpret-statement-list (parser file) (newenvironment) return
                                   breakOutsideLoopError continueOutsideLoopError
-                                  uncaughtExceptionThrownError #f))))))
+                                  uncaughtExceptionThrownError))))))
 
 (define breakOutsideLoopError
   (lambda (env) (myerror "Break used outside loop")))
@@ -35,22 +35,21 @@
 ; interprets a list of statements.  The environment from each statement is used for the next ones.
 ;Useful for debugging and not interpretting main
 (define interpret-statement-list
-  (lambda (statement-list environment return break continue throw isInFunction)
+  (lambda (statement-list environment return break continue throw)
     (if (null? statement-list)
         (evaluate-main-function environment return break continue throw)
         ;environment ;this one is useful for debugging
-        (interpret-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw isInFunction) return break continue throw isInFunction))))
+        (interpret-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
 
 ; interpret a statement in the environment with continuations for return, break, continue, throw
 (define interpret-statement
-  (lambda (statement environment return break continue throw isInFunction)
+  (lambda (statement environment return break continue throw)
     (cond
-      ((and isInFunction (eq? 'return (statement-type statement))) (interpret-function-return statement environment throw))
       ((eq? 'return (statement-type statement)) (interpret-return statement environment return throw))
       ((eq? 'var (statement-type statement)) (interpret-declare statement environment throw))
       ((eq? '= (statement-type statement)) (interpret-assign statement environment throw))
-      ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw isInFunction))
-      ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw isInFunction))
+      ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw))
+      ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw))
       ((eq? 'continue (statement-type statement)) (continue environment))
       ((eq? 'break (statement-type statement)) (break environment))
       ((eq? 'begin (statement-type statement)) (interpret-block statement environment return break continue throw))
@@ -80,26 +79,24 @@
 ; Updates the environment to add a new binding for a variable
 (define interpret-assign
   (lambda (statement environment throw)
-    (cond
-      ((and (list? (get-assign-rhs statement)) (eq? (car (get-assign-rhs statement)) 'funcall)) (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) (interpret-funcall statement environment throw)))
-      (else (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))))
+    (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))
 
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
-  (lambda (statement environment return break continue throw isInFunction)
+  (lambda (statement environment return break continue throw)
     (cond
-      ((eval-expression (get-condition statement) environment throw) (interpret-statement (get-then statement) environment return break continue throw isInFunction))
-      ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw isInFunction))
+      ((eval-expression (get-condition statement) environment throw) (interpret-statement (get-then statement) environment return break continue throw))
+      ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw))
       (else environment))))
 
 ; Interprets a while loop.  We must create break and continue continuations for this loop
 (define interpret-while
-  (lambda (statement environment return throw isInFunction)
+  (lambda (statement environment return throw)
     (call/cc
      (lambda (break)
        (letrec ((loop (lambda (condition body environment)
                         (if (eval-expression condition environment throw)
-                            (loop condition body (interpret-statement body environment return break (lambda (env) (break (loop condition body env))) throw isInFunction))
+                            (loop condition body (interpret-statement body environment return break (lambda (env) (break (loop condition body env))) throw))
                          environment))))
          (loop (get-condition statement) (get-body statement) environment))))))
 
@@ -115,10 +112,10 @@
 
 ; Used for interpreting the block statments of while loops
 (define interpret-block-statement-list
-  (lambda (statement-list environment return break continue throw isInFunction)
+  (lambda (statement-list environment return break continue throw)
     (if (null? statement-list)
         environment
-        (interpret-block-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw isInFunction) return break continue throw isInFunction))))
+        (interpret-block-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
 
 ; We use a continuation to throw the proper value. Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
 (define interpret-throw
@@ -130,7 +127,7 @@
 ; Create a continuation for the throw.  If there is no catch, it has to interpret the finally block, and once that completes throw the exception.
 ;   Otherwise, it interprets the catch block with the exception bound to the thrown value and interprets the finally block when the catch is done
 (define create-throw-catch-continuation
-  (lambda (catch-statement environment return break continue throw jump finally-block isInFunction)
+  (lambda (catch-statement environment return break continue throw jump finally-block)
     (cond
       ((null? catch-statement) (lambda (ex env) (throw ex (interpret-block finally-block env return break continue throw)))) 
       ((not (eq? 'catch (statement-type catch-statement))) (myerror "Incorrect catch statement"))
@@ -142,7 +139,7 @@
                                                  return 
                                                  (lambda (env2) (break (pop-frame env2))) 
                                                  (lambda (env2) (continue (pop-frame env2))) 
-                                                 (lambda (v env2) (throw v (pop-frame env2))) isInFunction))
+                                                 (lambda (v env2) (throw v (pop-frame env2)))))
                                      return break continue throw)))))))
 
 ; To interpret a try block, we must adjust  the return, break, continue continuations to interpret the finally block if any of them are used.
@@ -176,7 +173,7 @@
   (lambda (environment return break continue throw)
     (cond
       ((not (exists? 'main environment)) (myerror "Main function does not exist")) ;this should check if main is associated with a statement list in the env
-      (else (interpret-statement-list (cadr (lookup 'main environment)) (push-frame environment) return break continue throw #f)))))
+      (else (interpret-statement-list (cadr (lookup 'main environment)) (push-frame environment) return break continue throw)))))
 
 ; evaluates a funcall. Funcall here is for example (amethod 1 2 3) or (bmethod)
 ; Idk what to do with parameters so . . .
@@ -202,7 +199,8 @@
 
 (define ignore-parent-env
   (lambda (environment)
-    (cons (car environment) (cddr environment))))
+    environment))
+    ;(cons (car environment) (cddr environment))))
 
 ; The same as interpret-statement-list except at the end it returns the environment
 ; idk what to do with breaks and stuff
@@ -211,7 +209,7 @@
     (cond 
         ((null? statement-list) (pop-frame environment))
         ((eq? 'return (caar statement-list)) (interpret-function-return (car statement-list) environment throw))
-        (else (interpret-function-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw #t) return break continue throw)))))
+        (else (interpret-function-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw)))))
 
 (define interpret-function-return
   (lambda (statement-list environment throw)
@@ -487,23 +485,23 @@
 ; Tests
 ;------------------------
 ;(interpret "tests/0.txt") ;15
-;(interpret "tests/1.txt") ;10
-;(interpret "tests/2.txt") ;14
-;(interpret "tests/3.txt") ;45
-(interpret "tests/4.txt") ;55
+(interpret "tests/1.txt") ;10
+(interpret "tests/2.txt") ;14
+(interpret "tests/3.txt") ;45
+;(interpret "tests/4.txt") ;55
 ;(interpret "tests/5.txt") ;1
-;(interpret "tests/6.txt") ;115
+(interpret "tests/6.txt") ;115
 ;(interpret "tests/7.txt") ;true
-;(interpret "tests/8.txt") ;20
-;(interpret "tests/9.txt") ;24
-;(interpret "tests/10.txt") ;2
-;(interpret "tests/11.txt") ;35
+(interpret "tests/8.txt") ;20
+(interpret "tests/9.txt") ;24
+(interpret "tests/10.txt") ;2
+(interpret "tests/11.txt") ;35
 ;(interpret "tests/12.txt") ;Error mismatched params and args
 ;(interpret "tests/13.txt") ;90
 ;(interpret "tests/14.txt") ;69 ;ayylmao
 ;(interpret "tests/15.txt") ;87
-;(interpret "tests/16.txt") ;64
+(interpret "tests/16.txt") ;64
 ;(interpret "tests/17.txt") ;Error var out of scope
-;(interpret "tests/18.txt") ;125
-;(interpret "tests/19.txt") ;100
-;(interpret "tests/20.txt") ;2000400
+(interpret "tests/18.txt") ;125
+;(interpret "tests/19.txt") ;100 (infloop) 
+;(interpret "tests/20.txt") ;2000400 (infloop)
