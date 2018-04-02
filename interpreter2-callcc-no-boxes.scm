@@ -207,8 +207,14 @@
   (lambda (statement-list environment return break continue throw)
     (cond 
         ((null? statement-list) (pop-frame environment))
-        ;((eq? 'return (caar statement-list)) environment) 
+        ((eq? 'return (caar statement-list)) (interpret-function-return (car statement-list) environment throw))
         (else (interpret-function-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw)))))
+
+(define interpret-function-return
+  (lambda (statement-list environment throw)
+    (cond
+      ((null? statement-list) (myerror "Return statement does not exist"))
+      (else (insert (car statement-list) (eval-expression (cadr statement-list) environment throw) environment)))))
 
 ; helper methods so that I can reuse the interpret-block method on the try and finally blocks
 (define make-try-block
