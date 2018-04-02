@@ -79,7 +79,9 @@
 ; Updates the environment to add a new binding for a variable
 (define interpret-assign
   (lambda (statement environment throw)
-    (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))
+    (cond
+      ((and (list? (get-assign-rhs statement)) (eq? (car (get-assign-rhs statement)) 'funcall)) (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) (interpret-funcall statement environment throw)))
+      (else (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))))
 
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
@@ -497,7 +499,7 @@
 ;(interpret "tests/11.txt") ;35
 ;(interpret "tests/12.txt") ;Error mismatched params and args
 ;(interpret "tests/13.txt") ;90
-;(interpret "tests/14.txt") ;69 ;ayylmao
+(interpret "tests/14.txt") ;69 ;ayylmao
 ;(interpret "tests/15.txt") ;87
 ;(interpret "tests/16.txt") ;64
 ;(interpret "tests/17.txt") ;Error var out of scope
