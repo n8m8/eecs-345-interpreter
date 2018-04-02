@@ -120,7 +120,7 @@
 ; We use a continuation to throw the proper value. Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
 (define interpret-throw
   (lambda (statement environment throw)
-    (throw (eval-expression (get-expr statement) environment) environment)))
+    (throw (eval-expression (get-expr statement) environment throw) environment)))
 
 ; Interpret a try-catch-finally block
 
@@ -238,7 +238,7 @@
   (lambda (expr environment throw)
     (cond
       ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment throw)))
-      ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment)))
+      ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment throw)))
       (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment throw) environment throw)))))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
@@ -494,6 +494,6 @@
 ;(interpret "tests/15.txt") ;87
 ;(interpret "tests/16.txt") ;64
 ;(interpret "tests/17.txt") ;Error var out of scope
-;(interpret "tests/18.txt") ;125
-;(interpret "tests/19.txt") ;100
+(interpret "tests/18.txt") ;125
+(interpret "tests/19.txt") ;100
 ;(interpret "tests/20.txt") ;2000400
