@@ -56,8 +56,8 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
-      ;((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-func statement) environment throw))
-      ((eq? 'funcall (statement-type statement)) environment)
+      ((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-func statement) environment throw))
+      ;((eq? 'funcall (statement-type statement)) environment)
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 (define statement-type car)
@@ -265,7 +265,7 @@
       ((eq? '>= (operator expr)) (>= op1value (eval-expression (operand2 expr) environment throw)))
       ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment throw)))
       ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment throw)))
-      ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment throw)) ; will need to add new return break continue throw
+      ((eq? 'funcall (operator expr)) (lookup 'return (interpret-funcall (cdr expr) environment throw))) ; will need to add new return break continue throw
       (else (myerror "Unknown operator:" (operator expr))))))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
