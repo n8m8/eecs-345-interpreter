@@ -56,7 +56,8 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
-      ((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-func statement) environment throw))
+      ;((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-func statement) environment throw))
+      ((eq? 'funcall (statement-type statement)) environment)
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 (define statement-type car)
@@ -205,7 +206,7 @@
   (lambda (statement-list environment return break continue throw)
     (cond 
         ((null? statement-list) (pop-frame environment))
-        ((eq? 'return (caar statement-list)) environment) 
+        ;((eq? 'return (caar statement-list)) environment) 
         (else (interpret-function-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw)))))
 
 ; helper methods so that I can reuse the interpret-block method on the try and finally blocks
@@ -481,7 +482,7 @@
 ;(interpret "tests/3.txt") ;45
 ;(interpret "tests/4.txt") ;55
 ;(interpret "tests/5.txt") ;1
-(interpret "tests/6.txt") ;115
+;(interpret "tests/6.txt") ;115
 ;(interpret "tests/7.txt") ;true
 ;(interpret "tests/8.txt") ;20
 ;(interpret "tests/9.txt") ;24
