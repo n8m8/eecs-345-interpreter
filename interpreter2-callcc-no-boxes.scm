@@ -193,6 +193,7 @@
   (lambda (param-names param-values environment throw)
     (cond
       ((null? param-names) environment)
+      ((not (eq? (length param-names) (length param-values))) (myerror "Mismatching parameters and arguments"))
       ((list? param-names) (add-parameters-to-environment (cdr param-names) (cdr param-values) (insert (car param-names) (eval-expression (car param-values) (pop-frame environment) throw) environment) throw))
       (else (insert param-names (eval-expression param-values (pop-frame environment)) environment)))))
 
@@ -494,6 +495,6 @@
 ;(interpret "tests/15.txt") ;87
 ;(interpret "tests/16.txt") ;64
 ;(interpret "tests/17.txt") ;Error var out of scope
-(interpret "tests/18.txt") ;125
-(interpret "tests/19.txt") ;100
+;(interpret "tests/18.txt") ;125
+;(interpret "tests/19.txt") ;100
 ;(interpret "tests/20.txt") ;2000400
