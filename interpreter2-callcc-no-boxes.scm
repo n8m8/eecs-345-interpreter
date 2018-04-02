@@ -56,7 +56,7 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
-      ;((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-funcall statement) environment return break continue throw))
+      ((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-func statement) environment throw))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 (define statement-type car)
@@ -75,7 +75,7 @@
         (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment throw) environment)
         (insert (get-declare-var statement) 'novalue environment))))
 
-; Updates the environment to add an new binding for a variable
+; Updates the environment to add a new binding for a variable
 (define interpret-assign
   (lambda (statement environment throw)
     (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))
@@ -102,12 +102,19 @@
 ; Interprets a block.  The break, continue, and throw continuations must be adjusted to pop the environment
 (define interpret-block
   (lambda (statement environment return break continue throw)
-    (pop-frame (interpret-statement-list (cdr statement)
+    (pop-frame (interpret-block-statement-list (cdr statement)
                                          (push-frame environment)
                                          return
                                          (lambda (env) (break (pop-frame env)))
                                          (lambda (env) (continue (pop-frame env)))
                                          (lambda (v env) (throw v (pop-frame env)))))))
+
+; Used for interpreting the block statments of while loops
+(define interpret-block-statement-list
+  (lambda (statement-list environment return break continue throw)
+    (if (null? statement-list)
+        environment
+        (interpret-block-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
 
 ; We use a continuation to throw the proper value. Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
 (define interpret-throw
@@ -177,7 +184,7 @@
          ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
          ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame (pop-frame environment)) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
          (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (ignore-parent-env (add-parameters-to-environment (car (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw)) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
-
+  
 (define function-name car)
 (define parameters cdr)
 
@@ -196,9 +203,10 @@
 ; idk what to do with breaks and stuff
 (define interpret-function-statement-list
   (lambda (statement-list environment return break continue throw)
-    (if (null? statement-list)
-        (pop-frame environment) ;this one is useful for debugging
-        (interpret-function-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
+    (cond 
+        ((null? statement-list) (pop-frame environment))
+        ((eq? 'return (caar statement-list)) environment) 
+        (else (interpret-function-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw)))))
 
 ; helper methods so that I can reuse the interpret-block method on the try and finally blocks
 (define make-try-block
@@ -468,13 +476,13 @@
 ; Tests
 ;------------------------
 ;(interpret "tests/0.txt") ;15
-(interpret "tests/1.txt") ;10
-(interpret "tests/2.txt") ;14
-(interpret "tests/3.txt") ;45
-(interpret "tests/4.txt") ;55
-(interpret "tests/5.txt") ;1
+;(interpret "tests/1.txt") ;10
+;(interpret "tests/2.txt") ;14
+;(interpret "tests/3.txt") ;45
+;(interpret "tests/4.txt") ;55
+;(interpret "tests/5.txt") ;1
 (interpret "tests/6.txt") ;115
-(interpret "tests/7.txt") ;true
+;(interpret "tests/7.txt") ;true
 ;(interpret "tests/8.txt") ;20
 ;(interpret "tests/9.txt") ;24
 ;(interpret "tests/10.txt") ;2
