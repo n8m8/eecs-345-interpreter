@@ -56,8 +56,7 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
-      ;((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-func statement) environment throw))
-      ((eq? 'funcall (statement-type statement)) environment)
+      ;((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-funcall statement) environment return break continue throw))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 (define statement-type car)
@@ -76,7 +75,7 @@
         (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment throw) environment)
         (insert (get-declare-var statement) 'novalue environment))))
 
-; Updates the environment to add a new binding for a variable
+; Updates the environment to add an new binding for a variable
 (define interpret-assign
   (lambda (statement environment throw)
     (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))
@@ -103,24 +102,17 @@
 ; Interprets a block.  The break, continue, and throw continuations must be adjusted to pop the environment
 (define interpret-block
   (lambda (statement environment return break continue throw)
-    (pop-frame (interpret-block-statement-list (cdr statement)
+    (pop-frame (interpret-statement-list (cdr statement)
                                          (push-frame environment)
                                          return
                                          (lambda (env) (break (pop-frame env)))
                                          (lambda (env) (continue (pop-frame env)))
                                          (lambda (v env) (throw v (pop-frame env)))))))
 
-; Used for interpreting the block statments of while loops
-(define interpret-block-statement-list
-  (lambda (statement-list environment return break continue throw)
-    (if (null? statement-list)
-        environment
-        (interpret-block-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
-
 ; We use a continuation to throw the proper value. Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
 (define interpret-throw
   (lambda (statement environment throw)
-    (throw (eval-expression (get-expr statement) environment throw) environment)))
+    (throw (eval-expression (get-expr statement) environment) environment)))
 
 ; Interpret a try-catch-finally block
 
@@ -133,7 +125,7 @@
       ((not (eq? 'catch (statement-type catch-statement))) (myerror "Incorrect catch statement"))
       (else (lambda (ex env)
               (jump (interpret-block finally-block
-                                     (pop-frame (interpret-throw-catch-statement-list 
+                                     (pop-frame (interpret-statement-list 
                                                  (get-body catch-statement) 
                                                  (insert (catch-var catch-statement) ex (push-frame env))
                                                  return 
@@ -141,12 +133,6 @@
                                                  (lambda (env2) (continue (pop-frame env2))) 
                                                  (lambda (v env2) (throw v (pop-frame env2)))))
                                      return break continue throw)))))))
-
-(define interpret-throw-catch-statement-list
-  (lambda (statement-list environment return break continue throw)
-    (if (null? statement-list)
-        environment
-        (interpret-throw-catch-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
 
 ; To interpret a try block, we must adjust  the return, break, continue continuations to interpret the finally block if any of them are used.
 ; We must create a new throw continuation and then interpret the try block with the new continuations followed by the finally block with the old continuations
@@ -189,9 +175,9 @@
      (lambda (func-return)
        (cond
          ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
-         ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame (pop-frame environment)) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
-         (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (ignore-parent-env (add-parameters-to-environment (car (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw)) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
-  
+         ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame environment) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
+         (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (add-parameters-to-environment (car (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
+
 (define function-name car)
 (define parameters cdr)
 
@@ -199,22 +185,16 @@
   (lambda (param-names param-values environment throw)
     (cond
       ((null? param-names) environment)
-      ((not (eq? (length param-names) (length param-values))) (myerror "Mismatching parameters and arguments"))
       ((list? param-names) (add-parameters-to-environment (cdr param-names) (cdr param-values) (insert (car param-names) (eval-expression (car param-values) (pop-frame environment) throw) environment) throw))
-      (else (insert param-names (eval-expression param-values (pop-frame environment)) environment)))))
-
-(define ignore-parent-env
-  (lambda (environment)
-    (cons (car environment) (cddr environment))))
+      (else (insert param-names (eval-expression param-values environment) environment)))))
 
 ; The same as interpret-statement-list except at the end it returns the environment
 ; idk what to do with breaks and stuff
 (define interpret-function-statement-list
   (lambda (statement-list environment return break continue throw)
-    (cond 
-        ((null? statement-list) (pop-frame environment))
-        ;((eq? 'return (caar statement-list)) environment) 
-        (else (interpret-function-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw)))))
+    (if (null? statement-list)
+        (pop-frame environment) ;this one is useful for debugging
+        (interpret-function-statement-list (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw))))
 
 ; helper methods so that I can reuse the interpret-block method on the try and finally blocks
 (define make-try-block
@@ -245,7 +225,7 @@
   (lambda (expr environment throw)
     (cond
       ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment throw)))
-      ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment throw)))
+      ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment)))
       (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment throw) environment throw)))))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
@@ -484,23 +464,23 @@
 ; Tests
 ;------------------------
 ;(interpret "tests/0.txt") ;15
-#|(interpret "tests/1.txt") ;10 ;WORKS
-(interpret "tests/2.txt") ;14 ;WORKS
-(interpret "tests/3.txt") ;45 ;WORKS
-(interpret "tests/4.txt") ;55 ;WORKS
-(interpret "tests/5.txt") ;1 ;WORKS
-(interpret "tests/6.txt") ;115 ;WORKS
-(interpret "tests/7.txt") ;true ;WORKS
-(interpret "tests/8.txt") ;20 ;WORKS
-(interpret "tests/9.txt") ;24 ;WORKS
-(interpret "tests/10.txt") ;2 ;DOES NOT WORK;global scoping
-(interpret "tests/11.txt") ;35 ;DOES NOT WORK;global scoping
-(interpret "tests/12.txt") ;Error mismatched params and args ;WORKS
-(interpret "tests/13.txt") ;90 ;WORKS
-(interpret "tests/14.txt") ;69 ;DOES NOT WORK;scoping
-(interpret "tests/15.txt") ;87 ;DOES NOT WORK;lost variable in scope?
-(interpret "tests/16.txt") ;64 ;DOES NOT WORK;lost variable in scope?
-(interpret "tests/17.txt");Error var out of scope ;WORKS
-(interpret "tests/18.txt")|# ;125 ;WORKS
-;(interpret "tests/19.txt") ;100 ;WORKS
-;(interpret "tests/20.txt") ;2000400 ;WORKS
+;(interpret "tests/1.txt") ;10
+;(interpret "tests/2.txt") ;14
+;(interpret "tests/3.txt") ;45
+(interpret "tests/4.txt") ;55
+;(interpret "tests/5.txt") ;1
+;(interpret "tests/6.txt") ;115
+;(interpret "tests/7.txt") ;true
+;(interpret "tests/8.txt") ;20
+;(interpret "tests/9.txt") ;24
+;(interpret "tests/10.txt") ;2
+;(interpret "tests/11.txt") ;35
+;(interpret "tests/12.txt") ;Error mismatched params and args
+;(interpret "tests/13.txt") ;90
+;(interpret "tests/14.txt") ;69 ;ayylmao
+;(interpret "tests/15.txt") ;87
+;(interpret "tests/16.txt") ;64
+;(interpret "tests/17.txt") ;Error var out of scope
+;(interpret "tests/18.txt") ;125
+;(interpret "tests/19.txt") ;100
+;(interpret "tests/20.txt") ;2000400
