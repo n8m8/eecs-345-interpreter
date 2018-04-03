@@ -57,12 +57,21 @@
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
       ;((eq? 'funcall (statement-type statement)) (interpret-funcall (statement-without-func statement) environment throw))
-      ((eq? 'funcall (statement-type statement)) environment)
+      ;((eq? 'funcall (statement-type statement)) environment)
+      ((eq? 'funcall (statement-type statement)) (interpret-funcall-result-environment (cadr (lookup (function-name (statement-without-funcall statement)) environment)) (add-parameters-to-environment (car (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw) return break continue throw))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 (define statement-type car)
 (define statement-without-func cdr)
 (define statement-without-funcall statement-without-func)
+
+(define interpret-funcall-result-environment
+ (lambda (statement-list environment return break continue throw)
+   (cond
+     ((null? statement-list) environment)
+     (else (if (list? (interpret-statement (car statement-list) environment return break continue throw))
+               (interpret-funcall-result-environment (cdr statement-list) (interpret-statement (car statement-list) environment return break continue throw) return break continue throw)
+               environment)))))
 
 ; Calls the return continuation with the given expression value
 (define interpret-return
@@ -190,7 +199,8 @@
        (cond
          ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
          ((null? (parameters funcall)) (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (push-frame (pop-frame environment)) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
-         (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (ignore-parent-env (add-parameters-to-environment (car (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw)) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
+         ;(else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (ignore-parent-env (add-parameters-to-environment (car (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw)) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
+         (else (interpret-function-statement-list (cadr (lookup (function-name funcall) environment)) (add-parameters-to-environment (car (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
   
 (define function-name car)
 (define parameters cdr)
@@ -202,10 +212,6 @@
       ((not (eq? (length param-names) (length param-values))) (myerror "Mismatching parameters and arguments"))
       ((list? param-names) (add-parameters-to-environment (cdr param-names) (cdr param-values) (insert (car param-names) (eval-expression (car param-values) (pop-frame environment) throw) environment) throw))
       (else (insert param-names (eval-expression param-values (pop-frame environment)) environment)))))
-
-(define ignore-parent-env
-  (lambda (environment)
-    (cons (car environment) (cddr environment))))
 
 ; The same as interpret-statement-list except at the end it returns the environment
 ; idk what to do with breaks and stuff
@@ -492,15 +498,15 @@
 (interpret "tests/6.txt") ;115 ;WORKS
 (interpret "tests/7.txt") ;true ;WORKS
 (interpret "tests/8.txt") ;20 ;WORKS
-(interpret "tests/9.txt") ;24 ;WORKS
+(interpret "tests/9.txt")|# ;24 ;WORKS
 (interpret "tests/10.txt") ;2 ;DOES NOT WORK;global scoping
-(interpret "tests/11.txt") ;35 ;DOES NOT WORK;global scoping
-(interpret "tests/12.txt") ;Error mismatched params and args ;WORKS
+;(interpret "tests/11.txt") ;35 ;WORKS (but maybe a fluke)
+#|(interpret "tests/12.txt") ;Error mismatched params and args ;WORKS
 (interpret "tests/13.txt") ;90 ;WORKS
 (interpret "tests/14.txt") ;69 ;DOES NOT WORK;scoping
 (interpret "tests/15.txt") ;87 ;DOES NOT WORK;lost variable in scope?
-(interpret "tests/16.txt") ;64 ;DOES NOT WORK;lost variable in scope?
+(interpret "tests/16.txt") ;64 ;WORKS (fluke?)
 (interpret "tests/17.txt");Error var out of scope ;WORKS
-(interpret "tests/18.txt")|# ;125 ;WORKS
-;(interpret "tests/19.txt") ;100 ;WORKS
-;(interpret "tests/20.txt") ;2000400 ;WORKS
+(interpret "tests/18.txt") ;125 ;WORKS
+(interpret "tests/19.txt") ;100 ;WORKS
+(interpret "tests/20.txt")|# ;2000400 ;WORKS
