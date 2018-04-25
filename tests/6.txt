@@ -1,17 +1,13 @@
-var a = 10;
-var b = 20;
+class A {
 
-function bmethod() {
-  var b = 30;
-  return a + b;
-}
+  var x = 100;
+  var y = 10;
 
-function cmethod() {
-  var a = 40;
-  return bmethod() + a + b;
-}
+  function add(g, h) {
+    return g + h;
+  }
 
-function main () {
-  var b = 5;
-  return cmethod() + a + b;
+  static function main() {
+    return new A().add(new A().x, new A().y);
+  }
 }

@@ -1,6 +1,11 @@
-var x = 4;
-var y = 6 + x;
+class A {
 
-function main() {
-  return x + y;
+  function add(g, h) {
+    return g + h;
+  }
+
+  static function main() {
+    var a = new A();
+    return a.add(10, 2);
+  }
 }
