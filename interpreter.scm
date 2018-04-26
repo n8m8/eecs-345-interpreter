@@ -49,6 +49,7 @@
     (cond
       ((eq? 'return (statement-type statement)) (interpret-return statement environment return throw))
       ((eq? 'var (statement-type statement)) (interpret-declare statement environment throw))
+      ;((eq? 'static-var (statement-type statement)) (interpret-static-var (statement-without-static-var statement) environment throw))
       ((eq? '= (statement-type statement)) (interpret-assign statement environment throw))
       ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw))
       ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw))
@@ -58,14 +59,23 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
+      ;((eq? 'static-function (statement-type statement)) (interpret-static-function (statement-without-static-func statement) environment return break continue throw))
+      ;((eq? 'abstract-function (statement-type statement)) (interpret-abstract-function (statement-without-abstract-func statement) environment return break continue throw))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall-result-environment (statement-list-from-function (lookup (function-name (statement-without-funcall statement)) environment)) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        return
                                                                                        break continue throw))
+      ;((eq? 'new (statement-type statement)) (interpret-new-object (statement-without-new statement) environment throw))
+      ;((eq? 'dot (statement-type statement)) (interpret-dot (statement-without-dot statement) environment throw))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 (define statement-type car)
 (define statement-without-func cdr)
 (define statement-without-funcall statement-without-func)
+(define statement-without-static-var statement-without-funcall)
+(define statement-without-static-func statement-without-static-var)
+(define statement-without-abstract-func statement-without-static-func)
+(define statement-without-new statement-without-abstract-func)
+(define statement-without-dot statement-without-new)
 (define get-parameters car)
 (define statement-list-from-function cadr)
 
@@ -503,17 +513,17 @@
 ;------------------------
 ; Tests
 ;------------------------
-;(interpret "tests/0.txt") ;15
-;(interpret "tests/1.txt") ;15
-;(interpret "tests/2.txt") ;12
-;(interpret "tests/3.txt") ;125
-;(interpret "tests/4.txt") ;36
-;(interpret "tests/5.txt") ;54
-;(interpret "tests/6.txt") ;110
-;(interpret "tests/7.txt") ;26
-;(interpret "tests/8.txt") ;117
-;(interpret "tests/9.txt") ;32
-;(interpret "tests/10.txt") ;15
-;(interpret "tests/11.txt") ;123456
-;(interpret "tests/12.txt") ;5285
-;(interpret "tests/13.txt") ;-716
+;(interpret "tests/0.txt", "A") ;69
+;(interpret "tests/1.txt", "A") ;15
+;(interpret "tests/2.txt", "A") ;12
+;(interpret "tests/3.txt", "A") ;125
+;(interpret "tests/4.txt", "A") ;36
+;(interpret "tests/5.txt", "A") ;54
+;(interpret "tests/6.txt", "A") ;110
+;(interpret "tests/7.txt", "C") ;26
+;(interpret "tests/8.txt", "Square") ;117
+;(interpret "tests/9.txt", "Square") ;32
+;(interpret "tests/10.txt", "List") ;15
+;(interpret "tests/11.txt", "List") ;123456
+;(interpret "tests/12.txt", "List") ;5285
+;(interpret "tests/13.txt", "C") ;-716

@@ -1,8 +1,5 @@
-var x = 1;
-function amethod() {
-  x = x + 1;
-}
-function main() {
-  amethod();
-  return x;
+class A {
+  static function main() {
+    return 69;
+  }
 }
