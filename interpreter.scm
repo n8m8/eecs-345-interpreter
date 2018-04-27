@@ -533,17 +533,17 @@
 ;------------------------
 ; Tests
 ;------------------------
-;(interpret "tests/0.txt", "A") ;69
-;(interpret "tests/1.txt", "A") ;15
-;(interpret "tests/2.txt", "A") ;12
-;(interpret "tests/3.txt", "A") ;125
-;(interpret "tests/4.txt", "A") ;36
-;(interpret "tests/5.txt", "A") ;54
-;(interpret "tests/6.txt", "A") ;110
-;(interpret "tests/7.txt", "C") ;26
-;(interpret "tests/8.txt", "Square") ;117
-;(interpret "tests/9.txt", "Square") ;32
-;(interpret "tests/10.txt", "List") ;15
-;(interpret "tests/11.txt", "List") ;123456
-;(interpret "tests/12.txt", "List") ;5285
-;(interpret "tests/13.txt", "C") ;-716
+;(interpret "tests/0.txt", 'A) ;69
+;(interpret "tests/1.txt", 'A) ;15
+;(interpret "tests/2.txt", 'A) ;12
+;(interpret "tests/3.txt", 'A) ;125
+;(interpret "tests/4.txt", 'A) ;36
+;(interpret "tests/5.txt", 'A) ;54
+;(interpret "tests/6.txt", 'A) ;110
+;(interpret "tests/7.txt", 'C) ;26
+;(interpret "tests/8.txt", 'Square) ;117
+;(interpret "tests/9.txt", 'Square) ;32
+;(interpret "tests/10.txt", 'List) ;15
+;(interpret "tests/11.txt", 'List) ;123456
+;(interpret "tests/12.txt", 'List) ;5285
+;(interpret "tests/13.txt", 'C) ;-716

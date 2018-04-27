@@ -1,5 +1,6 @@
 class A {
-  static function main() {
-    return 69;
+  var x = 69;
+static function main() {
+  return x;
   }
 }
