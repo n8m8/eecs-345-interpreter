@@ -15,11 +15,11 @@
 
 ; The main function.  Calls parser to get the parse tree and interprets it with a new environment.  The returned value is in the environment.
 (define interpret
-  (lambda (file)
+  (lambda (file class-name)
     (scheme->language
      (call/cc
       (lambda (return)
-        (interpret-statement-list (parser file) (newenvironment) return
+        (interpret-statement-list (parser file) (newenvironment) class-name return
                                   breakOutsideLoopError continueOutsideLoopError
                                   uncaughtExceptionThrownError))))))
 
@@ -35,10 +35,11 @@
 ; interprets a list of statements.  The environment from each statement is used for the next ones.
 ;Useful for debugging and not interpretting main
 (define interpret-statement-list
-  (lambda (statement-list environment return break continue throw)
+  (lambda (statement-list environment class-name return break continue throw)
     (if (null? statement-list)
-        (evaluate-main-function environment return break continue throw)
-        (interpret-statement-list (rest-of-statement-list statement-list) (interpret-statement (first-statement statement-list) environment return break continue throw) return break continue throw))))
+        (evaluate-main-function class-name environment return break continue throw)
+        ;environment ;keep this for debugging
+        (interpret-statement-list (rest-of-statement-list statement-list) (interpret-statement (first-statement statement-list) environment return break continue throw) class-name return break continue throw))))
 
 (define rest-of-statement-list cdr)
 (define first-statement car)
@@ -66,6 +67,7 @@
                                                                                        break continue throw))
       ;((eq? 'new (statement-type statement)) (interpret-new-object (statement-without-new statement) environment throw))
       ;((eq? 'dot (statement-type statement)) (interpret-dot (statement-without-dot statement) environment throw))
+      ((eq? 'class (statement-type statement)) (interpret-class (statement-without-class statement) environment))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 (define statement-type car)
@@ -76,8 +78,19 @@
 (define statement-without-abstract-func statement-without-static-func)
 (define statement-without-new statement-without-abstract-func)
 (define statement-without-dot statement-without-new)
+(define statement-without-class statement-without-dot)
 (define get-parameters car)
 (define statement-list-from-function cadr)
+
+; Interprets 'class and adds it to the environment
+(define interpret-class
+  (lambda (class-closure environment)
+    (cond
+      ((null? class-closure) (myerror "No class closure"))
+      (else (insert (get-class-name class-closure) (get-rest-of-class-closure class-closure) environment)))))
+
+(define get-class-name car)
+(define get-rest-of-class-closure cdr)
 
 ; M-environment function returns the environment that is the result of calling function
 (define interpret-funcall-result-environment
@@ -152,7 +165,6 @@
     (throw (eval-expression (get-expr statement) environment throw) environment)))
 
 ; Interpret a try-catch-finally block
-
 ; Create a continuation for the throw.  If there is no catch, it has to interpret the finally block, and once that completes throw the exception.
 ;   Otherwise, it interprets the catch block with the exception bound to the thrown value and interprets the finally block when the catch is done
 (define create-throw-catch-continuation
@@ -207,10 +219,18 @@
 
 ; Evaluates the function 'main
 (define evaluate-main-function
-  (lambda (environment return break continue throw)
+  (lambda (class-name environment return break continue throw)
     (cond
-      ((not (exists? 'main environment)) (myerror "Main function does not exist")) ;this should check if main is associated with a statement list in the env
-      (else (interpret-statement-list (statement-list-of-function (lookup 'main environment)) (push-frame environment) return break continue throw)))))
+      ((not (exists? class-name environment)) (myerror "Undefined class")) ;this should check if main is associated with a statement list in the env
+      (else (interpret-statement-list (statement-list-of-function (find-function-in-closure (cadr (lookup class-name environment)) 'main)) (push-frame environment) class-name return break continue throw)))))
+
+
+(define find-function-in-closure
+  (lambda (class-closure func-name)
+    (cond
+        ((null? class-closure) (myerror "Function does not exist"))
+        ((eq? func-name (cadar class-closure)) (cddar class-closure))
+        (else (find-function-in-closure (cdr class-closure) func-name)))))
 
 ; evaluates a funcall. Funcall here is for example (amethod 1 2 3) or (bmethod)
 (define interpret-funcall
