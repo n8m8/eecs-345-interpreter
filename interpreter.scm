@@ -37,7 +37,7 @@
 (define interpret-statement-list
   (lambda (statement-list environment class-name return break continue throw)
     (if (null? statement-list)
-        (evaluate-main-function class-name environment return break continue throw)
+        (evaluate-main-class class-name environment return break continue throw)
         ;environment ;keep this for debugging
         (interpret-statement-list (rest-of-statement-list statement-list) (interpret-statement (first-statement statement-list) environment return break continue throw) class-name return break continue throw))))
 
@@ -218,7 +218,7 @@
 (define statement-list-of-function cadr)
 
 ; Evaluates the function 'main
-(define evaluate-main-function
+(define evaluate-main-class
   (lambda (class-name environment return break continue throw)
     (cond
       ((not (exists? class-name environment)) (myerror "Undefined class")) ;this should check if main is associated with a statement list in the env
@@ -533,17 +533,17 @@
 ;------------------------
 ; Tests
 ;------------------------
-;(interpret "tests/0.txt", 'A) ;69
-;(interpret "tests/1.txt", 'A) ;15
-;(interpret "tests/2.txt", 'A) ;12
-;(interpret "tests/3.txt", 'A) ;125
-;(interpret "tests/4.txt", 'A) ;36
-;(interpret "tests/5.txt", 'A) ;54
-;(interpret "tests/6.txt", 'A) ;110
-;(interpret "tests/7.txt", 'C) ;26
-;(interpret "tests/8.txt", 'Square) ;117
-;(interpret "tests/9.txt", 'Square) ;32
-;(interpret "tests/10.txt", 'List) ;15
-;(interpret "tests/11.txt", 'List) ;123456
-;(interpret "tests/12.txt", 'List) ;5285
-;(interpret "tests/13.txt", 'C) ;-716
+(interpret "tests/0.txt" 'A) ;69
+;(interpret "tests/1.txt" 'A) ;15
+;(interpret "tests/2.txt" 'A) ;12
+;(interpret "tests/3.txt" 'A) ;125
+;(interpret "tests/4.txt" 'A) ;36
+;(interpret "tests/5.txt" 'A) ;54
+;(interpret "tests/6.txt" 'A) ;110
+;(interpret "tests/7.txt" 'C) ;26
+;(interpret "tests/8.txt" 'Square) ;117
+;(interpret "tests/9.txt" 'Square) ;32
+;(interpret "tests/10.txt" 'List) ;15
+;(interpret "tests/11.txt" 'List) ;123456
+;(interpret "tests/12.txt" 'List) ;5285
+;(interpret "tests/13.txt" 'C) ;-716
