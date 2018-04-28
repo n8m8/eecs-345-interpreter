@@ -75,7 +75,7 @@
     (cond
       ((null? instance-name) (myerror "instance name was null"))
       ((null? field-to-lookup) (myerror "field-to-lookup was null"))
-      (else (lookup field-to-lookup (lookup instance-name environment))))))
+      (else (eval-expression field-to-lookup (lookup instance-name environment) throw)))))
 
 (define statement-type car)
 (define statement-without-func cdr)
@@ -95,7 +95,7 @@
     (cond
       ((null? statement) (myerror "Statement doesn't exist"))
       ((null? (lookup (cadadr statement) environment)) (myerror "Class doesn't exist"))
-      (else (insert (car statement) (make-statelayer-from-instance-fields (cadr (lookup (cadadr statement) environment))(push-frame environment) return break continue throw) environment)))))
+      (else (insert (car statement) (make-statelayer-from-instance-fields (cadr (lookup (cadadr statement) environment)) (push-frame environment) return break continue throw) environment)))))
 
 
 ; Interprets 'class and adds it to the environment
@@ -125,7 +125,8 @@
 ; Calls the return continuation with the given expression value
 (define interpret-return
   (lambda (statement environment return throw)
-    (return (eval-expression (get-expr statement) environment throw))))
+    (return environment))) ;used for debugging purposes
+    ;(return (eval-expression (get-expr statement) environment throw))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 #|(define interpret-declare
@@ -269,6 +270,7 @@
         ((eq? func-name (cadar class-closure)) (cddar class-closure))
         (else (find-function-in-closure (cdr class-closure) func-name)))))
 
+; Interpret-statement is probably the reason var a = new A() isn't working
 (define make-statelayer-from-instance-fields
   (lambda (class-closure environment return break continue throw)
     (cond
@@ -578,8 +580,8 @@
 ; Tests
 ;------------------------
 ;(interpret "tests/0.txt" 'A) ;69
-(interpret "tests/1.txt" 'A) ;15
-;(interpret "tests/2.txt" 'A) ;12
+;(interpret "tests/1.txt" 'A) ;15
+(interpret "tests/2.txt" 'A) ;12
 ;(interpret "tests/3.txt" 'A) ;125
 ;(interpret "tests/4.txt" 'A) ;36
 ;(interpret "tests/5.txt" 'A) ;54
