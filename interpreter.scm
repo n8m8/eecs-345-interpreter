@@ -49,7 +49,7 @@
   (lambda (statement environment return break continue throw)
     (cond
       ((eq? 'return (statement-type statement)) (interpret-return statement environment return throw))
-      ((eq? 'var (statement-type statement)) (interpret-declare statement environment throw))
+      ((eq? 'var (statement-type statement)) (interpret-declare statement environment return break continue throw))
       ;((eq? 'static-var (statement-type statement)) (interpret-static-var (statement-without-static-var statement) environment throw))
       ((eq? '= (statement-type statement)) (interpret-assign statement environment throw))
       ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw))
@@ -65,10 +65,17 @@
       ((eq? 'funcall (statement-type statement)) (interpret-funcall-result-environment (statement-list-from-function (lookup (function-name (statement-without-funcall statement)) environment)) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        return
                                                                                        break continue throw))
-      ;((eq? 'new (statement-type statement)) (interpret-new-object (statement-without-new statement) environment throw))
-      ;((eq? 'dot (statement-type statement)) (interpret-dot (statement-without-dot statement) environment throw))
+      ((eq? 'new (statement-type statement)) (interpret-new-object (statement-without-new statement) environment return break continue throw))
+      ((eq? 'dot (statement-type statement)) (interpret-dot (statement-without-dot statement) environment throw))
       ((eq? 'class (statement-type statement)) (interpret-class (statement-without-class statement) environment))
       (else (myerror "Unknown statement:" (statement-type statement))))))
+
+(define interpret-dot
+  (lambda (instance-name field-to-lookup environment throw)
+    (cond
+      ((null? instance-name) (myerror "instance name was null"))
+      ((null? field-to-lookup) (myerror "field-to-lookup was null"))
+      (else (lookup field-to-lookup (lookup instance-name environment))))))
 
 (define statement-type car)
 (define statement-without-func cdr)
@@ -81,6 +88,15 @@
 (define statement-without-class statement-without-dot)
 (define get-parameters car)
 (define statement-list-from-function cadr)
+
+
+(define interpret-new-object
+  (lambda (statement environment return break continue throw)
+    (cond
+      ((null? statement) (myerror "Statement doesn't exist"))
+      ((null? (lookup (cadadr statement) environment)) (myerror "Class doesn't exist"))
+      (else (insert (car statement) (make-statelayer-from-instance-fields (cadr (lookup (cadadr statement) environment))(push-frame environment) return break continue throw) environment)))))
+
 
 ; Interprets 'class and adds it to the environment
 (define interpret-class
@@ -112,11 +128,22 @@
     (return (eval-expression (get-expr statement) environment throw))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
-(define interpret-declare
-  (lambda (statement environment throw)
+#|(define interpret-declare
+  (lambda (statement environment return break continue throw)
     (if (exists-declare-value? statement)
-        (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment throw) environment)
-        (insert (get-declare-var statement) 'novalue environment))))
+        (if (and (list? (get-declare-value statement) (eq? (car (get-declare-value statement))) 'new))
+            (interpret-new-object (statement-without-new statement) environment return break continue throw)
+            (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment throw) environment))
+        (insert (get-declare-var statement) 'novalue environment))))|#
+
+(define interpret-declare
+  (lambda (statement environment return break continue throw)
+    (cond
+      ((exists-declare-value? statement) (if (list? (get-declare-value statement))
+                                             (interpret-new-object (statement-without-new statement) environment return break continue throw)
+                                             (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment throw) environment)))
+      (else (insert (get-declare-var statement) 'novalue environment)))))
+                                         
 
 ; Updates the environment to add a new binding for a variable
 (define interpret-assign
@@ -331,7 +358,8 @@
       ((eq? '>= (operator expr)) (>= op1value (eval-expression (operand2 expr) environment throw)))
       ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment throw)))
       ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment throw)))
-      ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment throw)) ; will need to add new return break continue throw
+      ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment throw))
+      ((eq? 'dot (operator expr)) (interpret-dot (cadr expr) (caddr expr) environment throw))
       (else (myerror "Unknown operator:" (operator expr))))))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
@@ -549,8 +577,8 @@
 ;------------------------
 ; Tests
 ;------------------------
-(interpret "tests/0.txt" 'A) ;69
-;(interpret "tests/1.txt" 'A) ;15
+;(interpret "tests/0.txt" 'A) ;69
+(interpret "tests/1.txt" 'A) ;15
 ;(interpret "tests/2.txt" 'A) ;12
 ;(interpret "tests/3.txt" 'A) ;125
 ;(interpret "tests/4.txt" 'A) ;36
