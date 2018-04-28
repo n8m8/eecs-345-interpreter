@@ -232,6 +232,12 @@
         ((eq? func-name (cadar class-closure)) (cddar class-closure))
         (else (find-function-in-closure (cdr class-closure) func-name)))))
 
+#|(define make-statelayer-from-instance-fields
+  (lambda (instance-fields environment)
+    (cond
+      ((null? instance-fields) environment)
+      ((not (list? instance-fields)) (insert |#
+
 ; evaluates a funcall. Funcall here is for example (amethod 1 2 3) or (bmethod)
 (define interpret-funcall
   (lambda (funcall environment throw)
