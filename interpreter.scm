@@ -60,7 +60,7 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
-      ;((eq? 'static-function (statement-type statement)) (interpret-static-function (statement-without-static-func statement) environment return break continue throw))
+      ((eq? 'static-function (statement-type statement)) (interpret-static-function (statement-without-static-func statement) environment return break continue throw))
       ;((eq? 'abstract-function (statement-type statement)) (interpret-abstract-function (statement-without-abstract-func statement) environment return break continue throw))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall-result-environment (statement-list-from-function (lookup (function-name (statement-without-funcall statement)) environment)) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        return
@@ -217,12 +217,22 @@
 (define func-body cdr)
 (define statement-list-of-function cadr)
 
+; To interpret a static-function and add it to the environment
+; Currently it is the same as interpret-function but will be updated later
+(define interpret-static-function
+  (lambda (statement environment return break continue throw)
+    (cond
+      ((null? (func-body statement)) environment) ;checks if the function body is empty
+      (else (insert (func-name statement) (func-body statement) environment))))) ;checks if there are any parameters
+
 ; Evaluates the function 'main
 (define evaluate-main-class
   (lambda (class-name environment return break continue throw)
     (cond
       ((not (exists? class-name environment)) (myerror "Undefined class")) ;this should check if main is associated with a statement list in the env
-      (else (interpret-statement-list (statement-list-of-function (find-function-in-closure (cadr (lookup class-name environment)) 'main)) (push-frame environment) class-name return break continue throw)))))
+      (else (interpret-statement-list (statement-list-of-function (find-function-in-closure (cadr (lookup class-name environment)) 'main))
+                                      (make-statelayer-from-instance-fields (cadr (lookup class-name environment))(push-frame environment) return break continue throw)
+                                      class-name return break continue throw)))))
 
 
 (define find-function-in-closure
@@ -232,11 +242,11 @@
         ((eq? func-name (cadar class-closure)) (cddar class-closure))
         (else (find-function-in-closure (cdr class-closure) func-name)))))
 
-#|(define make-statelayer-from-instance-fields
-  (lambda (instance-fields environment)
+(define make-statelayer-from-instance-fields
+  (lambda (class-closure environment return break continue throw)
     (cond
-      ((null? instance-fields) environment)
-      ((not (list? instance-fields)) (insert |#
+      ((null? class-closure) environment)
+      ((list? (car class-closure)) (make-statelayer-from-instance-fields (cdr class-closure) (interpret-statement (car class-closure) environment return break continue throw) return break continue throw)))))
 
 ; evaluates a funcall. Funcall here is for example (amethod 1 2 3) or (bmethod)
 (define interpret-funcall
