@@ -286,6 +286,7 @@
     (call/cc
      (lambda (func-return)
        (cond
+         ((eq? (caar funcall) 'dot) (interpret-function-statement-list (get-funcall-closure (car funcall) environment) environment func-return breakOutsideLoopError continueOutsideLoopError throw)) ;checks if the funcall is a dot function
          ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
          ((null? (parameters funcall)) (interpret-function-statement-list (statement-list-of-function (lookup (function-name funcall) environment)) (push-frame (pop-frame environment)) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
          (else (interpret-function-statement-list (statement-list-of-function (lookup (function-name funcall) environment)) (add-parameters-to-environment (func-name (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
@@ -294,6 +295,10 @@
 (define parameters cdr)
 (define first car)
 (define rest-of cdr)
+
+(define get-funcall-closure
+  (lambda (dot-funcall environment)
+    (lookup (caddr dot-funcall) (lookup (cadr dot-funcall) environment))))
 
 ; adds the given parameters to the givene environment
 (define add-parameters-to-environment
