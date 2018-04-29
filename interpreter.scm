@@ -286,7 +286,7 @@
     (call/cc
      (lambda (func-return)
        (cond
-         ((eq? (caar funcall) 'dot) (interpret-function-statement-list (get-funcall-closure (car funcall) environment) environment func-return breakOutsideLoopError continueOutsideLoopError throw)) ;checks if the funcall is a dot function
+         ((list? (car funcall)) (interpret-function-statement-list (cadr (get-funcall-closure (car funcall) environment)) (add-parameters-to-environment (car (get-funcall-closure (car funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)) ;checks if the funcall is a dot function
          ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
          ((null? (parameters funcall)) (interpret-function-statement-list (statement-list-of-function (lookup (function-name funcall) environment)) (push-frame (pop-frame environment)) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
          (else (interpret-function-statement-list (statement-list-of-function (lookup (function-name funcall) environment)) (add-parameters-to-environment (func-name (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
@@ -589,7 +589,7 @@
 ;------------------------
 ;(interpret "tests/0.txt" 'A) ;69
 ;(interpret "tests/1.txt" 'A) ;15
-(interpret "tests/2.txt" 'A) ;12
+;(interpret "tests/2.txt" 'A) ;12
 ;(interpret "tests/3.txt" 'A) ;125
 ;(interpret "tests/4.txt" 'A) ;36
 ;(interpret "tests/5.txt" 'A) ;54
