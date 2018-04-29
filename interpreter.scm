@@ -89,14 +89,17 @@
 (define get-parameters car)
 (define statement-list-from-function cadr)
 
-
+; Interprets a var that is being declared as a class object
+; Its value is an environment storing any functions or instance fields
 (define interpret-new-object
   (lambda (statement environment return break continue throw)
     (cond
       ((null? statement) (myerror "Statement doesn't exist"))
       ((null? (lookup (cadadr statement) environment)) (myerror "Class doesn't exist"))
-      (else (insert (car statement) (make-statelayer-from-instance-fields (cadr (lookup (cadadr statement) environment)) (push-frame environment) return break continue throw) environment)))))
+      (else (insert (car statement) (make-statelayer-from-instance-fields (get-closure-of-class (lookup (get-new-class-name statement) environment)) (newenvironment) return break continue throw) environment)))))
 
+(define get-new-class-name cadadr) ;returns 'A from '(a (new A))
+(define get-closure-of-class cadr) ;returns the closure of the class without what the class extends. Might need to include that later on
 
 ; Interprets 'class and adds it to the environment
 (define interpret-class
@@ -125,8 +128,8 @@
 ; Calls the return continuation with the given expression value
 (define interpret-return
   (lambda (statement environment return throw)
-    (return environment))) ;used for debugging purposes
-    ;(return (eval-expression (get-expr statement) environment throw))))
+    ;(return environment))) ;used for debugging purposes
+    (return (eval-expression (get-expr statement) environment throw))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 #|(define interpret-declare
@@ -270,7 +273,7 @@
         ((eq? func-name (cadar class-closure)) (cddar class-closure))
         (else (find-function-in-closure (cdr class-closure) func-name)))))
 
-; Interpret-statement is probably the reason var a = new A() isn't working
+
 (define make-statelayer-from-instance-fields
   (lambda (class-closure environment return break continue throw)
     (cond
