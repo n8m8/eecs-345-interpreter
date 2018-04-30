@@ -75,6 +75,8 @@
     (cond
       ((null? instance-name) (myerror "instance name was null"))
       ((null? field-to-lookup) (myerror "field-to-lookup was null"))
+      ((eq? instance-name 'this) (eval-expression field-to-lookup (pop-frame environment) throw))
+      ((eq? instance-name 'super) (eval-expression field-to-lookup (pop-frame (pop-frame environment)) throw))
       (else (eval-expression field-to-lookup (lookup instance-name environment) throw)))))
 
 (define statement-type car)
@@ -349,6 +351,7 @@
     (cond
       ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment throw)))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment throw)))
+      ((eq? (operator expr) 'dot) (interpret-dot (cadr expr) (caddr expr) environment throw))
       (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment throw) environment throw)))))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
@@ -369,7 +372,7 @@
       ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment throw)))
       ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment throw)))
       ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment throw))
-      ((eq? 'dot (operator expr)) (interpret-dot (cadr expr) (caddr expr) environment throw))
+      ;((eq? 'dot (operator expr)) (interpret-dot (cadr expr) (caddr expr) environment throw))
       (else (myerror "Unknown operator:" (operator expr))))))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
@@ -587,11 +590,11 @@
 ;------------------------
 ; Tests
 ;------------------------
-;(interpret "tests/0.txt" 'A) ;69
-;(interpret "tests/1.txt" 'A) ;15
-;(interpret "tests/2.txt" 'A) ;12
-;(interpret "tests/3.txt" 'A) ;125
-;(interpret "tests/4.txt" 'A) ;36
+(interpret "tests/0.txt" 'A) ;55
+(interpret "tests/1.txt" 'A) ;15
+(interpret "tests/2.txt" 'A) ;12
+(interpret "tests/3.txt" 'A) ;125
+(interpret "tests/4.txt" 'A) ;36
 ;(interpret "tests/5.txt" 'A) ;54
 ;(interpret "tests/6.txt" 'A) ;110
 ;(interpret "tests/7.txt" 'C) ;26
