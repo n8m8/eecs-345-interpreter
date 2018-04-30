@@ -62,11 +62,17 @@
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
       ((eq? 'static-function (statement-type statement)) (interpret-static-function (statement-without-static-func statement) environment return break continue throw))
       ;((eq? 'abstract-function (statement-type statement)) (interpret-abstract-function (statement-without-abstract-func statement) environment return break continue throw))
+      ;((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (interpret-funcall-result-environment (interpret-dot (cadr (function-name (statement-without-funcall statement))) (caddr (function-name (statement-without-funcall statement))) environment throw) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
+                                                                                       ;return
+                                                                                       ;break continue throw))
+      ((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (interpret-funcall-result-environment (cadr (get-funcall-closure (car (statement-without-funcall statement)) environment)) (add-parameters-to-environment (car (get-funcall-closure (car (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
+                                                                                       return
+                                                                                       break continue throw))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall-result-environment (statement-list-from-function (lookup (function-name (statement-without-funcall statement)) environment)) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        return
                                                                                        break continue throw))
       ((eq? 'new (statement-type statement)) (interpret-new-object (statement-without-new statement) environment return break continue throw))
-      ((eq? 'dot (statement-type statement)) (interpret-dot (statement-without-dot statement) environment throw))
+      ;((eq? 'dot (statement-type statement)) (interpret-dot (statement-without-dot statement) environment throw))
       ((eq? 'class (statement-type statement)) (interpret-class (statement-without-class statement) environment))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
@@ -154,8 +160,16 @@
 ; Updates the environment to add a new binding for a variable
 (define interpret-assign
   (lambda (statement environment throw)
-    (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))
+    (cond
+      ((list? (get-assign-lhs statement)) (cond ; need to come up with a way to keep on doing dots, and know how many environments to pop to assign to correct place
+                                            ((eq? (assign-dot-prefix (cadr statement)) 'this) (update 'nameofvartoupdate 'value environment))
+                                            ((eq? (assign-dot-prefix (cadr statement)) 'super) 1)
+                                            (else (elsestuff))))
+      (else (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))))
 
+(define assign-dot-prefix cadr)
+
+  
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
   (lambda (statement environment return break continue throw)
@@ -590,10 +604,10 @@
 ;------------------------
 ; Tests
 ;------------------------
-(interpret "tests/0.txt" 'A) ;55
-(interpret "tests/1.txt" 'A) ;15
-(interpret "tests/2.txt" 'A) ;12
-(interpret "tests/3.txt" 'A) ;125
+;(interpret "tests/0.txt" 'A) ;55
+;(interpret "tests/1.txt" 'A) ;15
+;(interpret "tests/2.txt" 'A) ;12
+;(interpret "tests/3.txt" 'A) ;125
 (interpret "tests/4.txt" 'A) ;36
 ;(interpret "tests/5.txt" 'A) ;54
 ;(interpret "tests/6.txt" 'A) ;110
