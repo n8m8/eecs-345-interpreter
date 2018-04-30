@@ -163,7 +163,7 @@
   (lambda (statement environment throw)
     (cond
       ((list? (get-assign-lhs statement)) (cond ; need to come up with a way to keep on doing dots, and know how many environments to pop to assign to correct place
-                                            ((eq? (assign-dot-prefix (cadr statement)) 'this) (update (car (cddadr statement)) (caddr statement) environment))
+                                            ((eq? (assign-dot-prefix (cadr statement)) 'this) (update (car (cddadr statement)) (eval-expression (caddr statement) environment throw) (pop-frame environment)))
                                             ((eq? (assign-dot-prefix (cadr statement)) 'super) 1)
                                             (else (myerror "NEED TO IMPLEMENT INTERPRET DOT LMAO"))))
       (else (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))))
