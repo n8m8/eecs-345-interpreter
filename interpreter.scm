@@ -52,6 +52,7 @@
       ((eq? 'var (statement-type statement)) (interpret-declare statement environment return break continue throw))
       ;((eq? 'static-var (statement-type statement)) (interpret-static-var (statement-without-static-var statement) environment throw))
       ((eq? '= (statement-type statement)) (interpret-assign statement environment throw))
+      ;((and (eq? '= (statement-type statement)) (list? (cadr statement))) (interpret-assign-with-instance-name (statement
       ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw))
       ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw))
       ((eq? 'continue (statement-type statement)) (continue environment))
@@ -65,9 +66,9 @@
       ;((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (interpret-funcall-result-environment (interpret-dot (cadr (function-name (statement-without-funcall statement))) (caddr (function-name (statement-without-funcall statement))) environment throw) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        ;return
                                                                                        ;break continue throw))
-      ((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (interpret-funcall-result-environment (cadr (get-funcall-closure (car (statement-without-funcall statement)) environment)) (add-parameters-to-environment (car (get-funcall-closure (car (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
+      ((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (update (cadar (statement-without-funcall statement)) (car (interpret-funcall-result-environment (cadr (get-funcall-closure (car (statement-without-funcall statement)) environment)) (add-parameters-to-environment (car (get-funcall-closure (car (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame (cons (lookup (cadar (statement-without-funcall statement)) environment) environment)) throw)
                                                                                        return
-                                                                                       break continue throw))
+                                                                                       break continue throw)) environment))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall-result-environment (statement-list-from-function (lookup (function-name (statement-without-funcall statement)) environment)) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        return
                                                                                        break continue throw))
@@ -162,9 +163,9 @@
   (lambda (statement environment throw)
     (cond
       ((list? (get-assign-lhs statement)) (cond ; need to come up with a way to keep on doing dots, and know how many environments to pop to assign to correct place
-                                            ((eq? (assign-dot-prefix (cadr statement)) 'this) (update 'nameofvartoupdate 'value environment))
+                                            ((eq? (assign-dot-prefix (cadr statement)) 'this) (update (car (cddadr statement)) (caddr statement) environment))
                                             ((eq? (assign-dot-prefix (cadr statement)) 'super) 1)
-                                            (else (elsestuff))))
+                                            (else (myerror "NEED TO IMPLEMENT INTERPRET DOT LMAO"))))
       (else (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))))
 
 (define assign-dot-prefix cadr)
