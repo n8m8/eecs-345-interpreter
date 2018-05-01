@@ -66,9 +66,9 @@
       ;((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (interpret-funcall-result-environment (interpret-dot (cadr (function-name (statement-without-funcall statement))) (caddr (function-name (statement-without-funcall statement))) environment throw) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        ;return
                                                                                        ;break continue throw))
-      ((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (update (cadar (statement-without-funcall statement)) (mycar (interpret-funcall-result-environment (cadr (get-funcall-closure (car (statement-without-funcall statement)) environment)) (add-parameters-to-environment (car (get-funcall-closure (car (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame (append (lookup (cadar (statement-without-funcall statement)) environment) environment)) throw)
+      ((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (update (cadar (statement-without-funcall statement)) (list (car (interpret-funcall-result-environment (cadr (get-funcall-closure (car (statement-without-funcall statement)) environment)) (add-parameters-to-environment (car (get-funcall-closure (car (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame (append (lookup (cadar (statement-without-funcall statement)) environment) environment)) throw)
                                                                                        return
-                                                                                       break continue throw)) environment))
+                                                                                       break continue throw))) environment))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall-result-environment (statement-list-from-function (lookup (function-name (statement-without-funcall statement)) environment)) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        return
                                                                                        break continue throw))
@@ -77,11 +77,6 @@
       ((eq? 'class (statement-type statement)) (interpret-class (statement-without-class statement) environment))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
-(define mycar
-  (lambda (l)
-    list (car l)))
-
-
 (define interpret-dot
   (lambda (instance-name field-to-lookup environment throw)
     (cond
@@ -89,7 +84,7 @@
       ((null? field-to-lookup) (myerror "field-to-lookup was null"))
       ((eq? instance-name 'this) (eval-expression field-to-lookup (pop-frame environment) throw))
       ((eq? instance-name 'super) (eval-expression field-to-lookup (pop-frame (pop-frame environment)) throw))
-      (else (eval-expression field-to-lookup (list (lookup instance-name environment)) throw)))))
+      (else (eval-expression field-to-lookup (append (lookup instance-name environment) environment) throw)))))
 
 (define statement-type car)
 (define statement-without-func cdr)
@@ -308,7 +303,7 @@
     (call/cc
      (lambda (func-return)
        (cond
-         ((list? (car funcall)) (interpret-function-statement-list (cadr (get-funcall-closure (car funcall) environment)) (add-parameters-to-environment (car (get-funcall-closure (car funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)) ;checks if the funcall is a dot function
+         ((list? (car funcall)) (interpret-function-statement-list (cadr (get-funcall-closure (car funcall) environment)) (add-parameters-to-environment (car (get-funcall-closure (car funcall) environment)) (parameters funcall) (push-frame (append (lookup (cadar funcall) environment) environment)) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)) ;checks if the funcall is a dot function
          ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
          ((null? (parameters funcall)) (interpret-function-statement-list (statement-list-of-function (lookup (function-name funcall) environment)) (push-frame (pop-frame environment)) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
          (else (interpret-function-statement-list (statement-list-of-function (lookup (function-name funcall) environment)) (add-parameters-to-environment (func-name (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
@@ -320,7 +315,7 @@
 
 (define get-funcall-closure
   (lambda (dot-funcall environment)
-    (lookup (caddr dot-funcall) (lookup (cadr dot-funcall) environment)))) ; NOTE outer lookup broke on .add bc lookup returned frame instead of environment
+    (lookup (caddr dot-funcall) (lookup (cadr dot-funcall) environment))))
 
 ; adds the given parameters to the givene environment
 (define add-parameters-to-environment
@@ -611,9 +606,9 @@
 ; Tests
 ;------------------------
 ;(interpret "tests/0.txt" 'A) ;55
-;(interpret "tests/1.txt" 'A) ;15
-;(interpret "tests/2.txt" 'A) ;12
-;(interpret "tests/3.txt" 'A) ;125
+(interpret "tests/1.txt" 'A) ;15
+(interpret "tests/2.txt" 'A) ;12
+(interpret "tests/3.txt" 'A) ;125
 (interpret "tests/4.txt" 'A) ;36
 ;(interpret "tests/5.txt" 'A) ;54
 ;(interpret "tests/6.txt" 'A) ;110
