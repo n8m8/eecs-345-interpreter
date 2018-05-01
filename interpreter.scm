@@ -9,10 +9,8 @@
 ; An interpreter for the simple language that uses call/cc for the continuations.  Does not handle side effects.
 (define call/cc call-with-current-continuation)
 
-
 ; The functions that start interpret-...  all return the current environment.
 ; The functions that start eval-...  all return a value
-
 ; The main function.  Calls parser to get the parse tree and interprets it with a new environment.  The returned value is in the environment.
 (define interpret
   (lambda (file class-name)
@@ -38,7 +36,7 @@
   (lambda (statement-list environment class-name return break continue throw)
     (if (null? statement-list)
         (evaluate-main-class class-name environment return break continue throw)
-        ;environment ;keep this for debugging
+        ;environment ;used for debugging
         (interpret-statement-list (rest-of-statement-list statement-list) (interpret-statement (first-statement statement-list) environment return break continue throw) class-name return break continue throw))))
 
 (define rest-of-statement-list cdr)
@@ -50,9 +48,7 @@
     (cond
       ((eq? 'return (statement-type statement)) (interpret-return statement environment return throw))
       ((eq? 'var (statement-type statement)) (interpret-declare statement environment return break continue throw))
-      ;((eq? 'static-var (statement-type statement)) (interpret-static-var (statement-without-static-var statement) environment throw))
       ((eq? '= (statement-type statement)) (interpret-assign statement environment throw))
-      ;((and (eq? '= (statement-type statement)) (list? (cadr statement))) (interpret-assign-with-instance-name (statement
       ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw))
       ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw))
       ((eq? 'continue (statement-type statement)) (continue environment))
@@ -62,29 +58,15 @@
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw))
       ((eq? 'function (statement-type statement)) (interpret-function (statement-without-func statement) environment return break continue throw))
       ((eq? 'static-function (statement-type statement)) (interpret-static-function (statement-without-static-func statement) environment return break continue throw))
-      ;((eq? 'abstract-function (statement-type statement)) (interpret-abstract-function (statement-without-abstract-func statement) environment return break continue throw))
-      ;((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (interpret-funcall-result-environment (interpret-dot (cadr (function-name (statement-without-funcall statement))) (caddr (function-name (statement-without-funcall statement))) environment throw) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
-                                                                                       ;return
-                                                                                       ;break continue throw))
-      ((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (update (cadar (statement-without-funcall statement)) (list (car (interpret-funcall-result-environment (cadr (get-funcall-closure (car (statement-without-funcall statement)) environment)) (add-parameters-to-environment (car (get-funcall-closure (car (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame (append (lookup (cadar (statement-without-funcall statement)) environment) environment)) throw)
+      ((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (update (instance-name (statement-without-funcall statement)) (list (car (interpret-funcall-result-environment (statement-list-from-function (get-funcall-closure (funcall-dot-operator (statement-without-funcall statement)) environment)) (add-parameters-to-environment (get-parameters (get-funcall-closure (funcall-dot-operator (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame (append (lookup (funcall-instance-field (statement-without-funcall statement)) environment) environment)) throw)
                                                                                        return
-                                                                                       break continue throw))) environment))
+                                                                                       break continue throw))) environment)) ;funcall check if there is a dot function
       ((eq? 'funcall (statement-type statement)) (interpret-funcall-result-environment (statement-list-from-function (lookup (function-name (statement-without-funcall statement)) environment)) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        return
                                                                                        break continue throw))
       ((eq? 'new (statement-type statement)) (interpret-new-object (statement-without-new statement) environment return break continue throw))
-      ;((eq? 'dot (statement-type statement)) (interpret-dot (statement-without-dot statement) environment throw))
       ((eq? 'class (statement-type statement)) (interpret-class (statement-without-class statement) environment))
       (else (myerror "Unknown statement:" (statement-type statement))))))
-
-(define interpret-dot
-  (lambda (instance-name field-to-lookup environment throw)
-    (cond
-      ((null? instance-name) (myerror "instance name was null"))
-      ((null? field-to-lookup) (myerror "field-to-lookup was null"))
-      ((eq? instance-name 'this) (eval-expression field-to-lookup (pop-frame environment) throw))
-      ((eq? instance-name 'super) (eval-expression field-to-lookup (pop-frame (pop-frame environment)) throw))
-      (else (eval-expression field-to-lookup (append (lookup instance-name environment) environment) throw)))))
 
 (define statement-type car)
 (define statement-without-func cdr)
@@ -97,18 +79,9 @@
 (define statement-without-class statement-without-dot)
 (define get-parameters car)
 (define statement-list-from-function cadr)
-
-; Interprets a var that is being declared as a class object
-; Its value is an environment storing any functions or instance fields
-(define interpret-new-object
-  (lambda (statement environment return break continue throw)
-    (cond
-      ((null? statement) (myerror "Statement doesn't exist"))
-      ((null? (lookup (cadadr statement) environment)) (myerror "Class doesn't exist"))
-      (else (insert (car statement) (make-statelayer-from-instance-fields (get-closure-of-class (lookup (get-new-class-name statement) environment)) (newenvironment) return break continue throw) environment)))))
-
-(define get-new-class-name cadadr) ;returns 'A from '(a (new A))
-(define get-closure-of-class cadr) ;returns the closure of the class without what the class extends. Might need to include that later on
+(define instance-name cadar)
+(define funcall-dot-operator car)
+(define funcall-instance-field cadar)
 
 ; Interprets 'class and adds it to the environment
 (define interpret-class
@@ -141,14 +114,6 @@
     (return (eval-expression (get-expr statement) environment throw))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
-#|(define interpret-declare
-  (lambda (statement environment return break continue throw)
-    (if (exists-declare-value? statement)
-        (if (and (list? (get-declare-value statement) (eq? (car (get-declare-value statement))) 'new))
-            (interpret-new-object (statement-without-new statement) environment return break continue throw)
-            (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment throw) environment))
-        (insert (get-declare-var statement) 'novalue environment))))|#
-
 (define interpret-declare
   (lambda (statement environment return break continue throw)
     (cond
@@ -157,19 +122,20 @@
                                              (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment throw) environment)))
       (else (insert (get-declare-var statement) 'novalue environment)))))
                                          
-
 ; Updates the environment to add a new binding for a variable
 (define interpret-assign
   (lambda (statement environment throw)
     (cond
-      ((list? (get-assign-lhs statement)) (cond ; need to come up with a way to keep on doing dots, and know how many environments to pop to assign to correct place
-                                            ((eq? (assign-dot-prefix (cadr statement)) 'this) (update (car (cddadr statement)) (eval-expression (caddr statement) environment throw) (pop-frame environment)))
-                                            ((eq? (assign-dot-prefix (cadr statement)) 'super) 1)
-                                            (else (myerror "NEED TO IMPLEMENT INTERPRET DOT LMAO"))))
+      ((list? (get-assign-lhs statement)) (cond
+                                            ((eq? (assign-dot-prefix (statement-with-no-dot statement)) 'this) (update (car (var-to-update statement)) (eval-expression (value-to-update statement) environment throw) (pop-frame environment)))
+                                            ((eq? (assign-dot-prefix (statement-with-no-dot statement)) 'super) 1)
+                                            (else (myerror "Unidentified operator"))))
       (else (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment throw) environment)))))
 
 (define assign-dot-prefix cadr)
-
+(define statement-with-no-dot cadr)
+(define var-to-update cddadr)
+(define value-to-update caddr)
   
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
@@ -266,7 +232,6 @@
 (define statement-list-of-function cadr)
 
 ; To interpret a static-function and add it to the environment
-; Currently it is the same as interpret-function but will be updated later
 (define interpret-static-function
   (lambda (statement environment return break continue throw)
     (cond
@@ -282,7 +247,7 @@
                                       (make-statelayer-from-instance-fields (cadr (lookup class-name environment))(push-frame environment) return break continue throw)
                                       class-name return break continue throw)))))
 
-
+; Looks up the function closure in the environment
 (define find-function-in-closure
   (lambda (class-closure func-name)
     (cond
@@ -290,7 +255,9 @@
         ((eq? func-name (cadar class-closure)) (cddar class-closure))
         (else (find-function-in-closure (cdr class-closure) func-name)))))
 
-
+; Makes a state layer of the instance fields to add to the environment
+; Runs through class closure until it runs out of instance fields/functions to interpret
+; Each statement in class-closure gets passed to interpret-statement to evaluate
 (define make-statelayer-from-instance-fields
   (lambda (class-closure environment return break continue throw)
     (cond
@@ -303,7 +270,7 @@
     (call/cc
      (lambda (func-return)
        (cond
-         ((list? (car funcall)) (interpret-function-statement-list (cadr (get-funcall-closure (car funcall) environment)) (add-parameters-to-environment (car (get-funcall-closure (car funcall) environment)) (parameters funcall) (push-frame (append (lookup (cadar funcall) environment) environment)) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)) ;checks if the funcall is a dot function
+         ((list? (car funcall)) (interpret-function-statement-list (funcall-closure (get-funcall-closure (funcall-dot-operator funcall) environment)) (add-parameters-to-environment (get-parameters (get-funcall-closure (funcall-dot-operator funcall) environment)) (parameters funcall) (push-frame (append (lookup (instance-name-to-append funcall) environment) environment)) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)) ;checks if the funcall is a dot function
          ((not (exists? (function-name funcall) environment)) (myerror "Function does not exist")) ;checks if the function exists
          ((null? (parameters funcall)) (interpret-function-statement-list (statement-list-of-function (lookup (function-name funcall) environment)) (push-frame (pop-frame environment)) func-return breakOutsideLoopError continueOutsideLoopError throw)) ; checks if there are parameters
          (else (interpret-function-statement-list (statement-list-of-function (lookup (function-name funcall) environment)) (add-parameters-to-environment (func-name (lookup (function-name funcall) environment)) (parameters funcall) (push-frame environment) throw) func-return breakOutsideLoopError continueOutsideLoopError throw)))))))
@@ -312,10 +279,16 @@
 (define parameters cdr)
 (define first car)
 (define rest-of cdr)
+(define funcall-closure cadr)
+(define instance-name-to-append cadar)
 
+; Returns the closure of the funcall by looking up the funcall in the value of the instance field 
 (define get-funcall-closure
   (lambda (dot-funcall environment)
-    (lookup (caddr dot-funcall) (lookup (cadr dot-funcall) environment))))
+    (lookup (funcall-to-look-up dot-funcall) (lookup (instance-name-to-look-up dot-funcall) environment))))
+
+(define instance-name-to-look-up cadr)
+(define funcall-to-look-up caddr)
 
 ; adds the given parameters to the givene environment
 (define add-parameters-to-environment
@@ -338,7 +311,7 @@
   (lambda (try-statement)
     (cons 'begin try-statement)))
 
-
+; Creates a finall block statement
 (define make-finally-block
   (lambda (finally-statement)
     (cond
@@ -347,6 +320,30 @@
       (else (cons 'begin (get-finally-statement finally-statement))))))
 
 (define get-finally-statement cadr)
+
+; Interprets the dot operator
+; The function appends the value of the instance name between the local layer and instance fields
+(define interpret-dot
+  (lambda (instance-name field-to-lookup environment throw)
+    (cond
+      ((null? instance-name) (myerror "instance name was null"))
+      ((null? field-to-lookup) (myerror "field-to-lookup was null"))
+      ((eq? instance-name 'this) (eval-expression field-to-lookup (pop-frame environment) throw))
+      ((eq? instance-name 'super) (eval-expression field-to-lookup (pop-frame (pop-frame environment)) throw))
+      (else (eval-expression field-to-lookup (append (lookup instance-name environment) environment) throw)))))
+
+; Interprets a var that is being declared as a class object
+; Its value is an environment storing any functions or instance fields
+(define interpret-new-object
+  (lambda (statement environment return break continue throw)
+    (cond
+      ((null? statement) (myerror "Statement doesn't exist"))
+      ((null? (lookup (cadadr statement) environment)) (myerror "Class doesn't exist"))
+      (else (insert (object-name statement) (make-statelayer-from-instance-fields (get-closure-of-class (lookup (get-new-class-name statement) environment)) (newenvironment) return break continue throw) environment)))))
+
+(define object-name car)
+(define get-new-class-name cadadr) ;returns 'A from '(a (new A))
+(define get-closure-of-class cadr) ;returns the closure of the class
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
@@ -366,8 +363,11 @@
     (cond
       ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment throw)))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment throw)))
-      ((eq? (operator expr) 'dot) (interpret-dot (cadr expr) (caddr expr) environment throw))
+      ((eq? (operator expr) 'dot) (interpret-dot (dot-instance-name expr) (dot-funcall expr) environment throw))
       (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment throw) environment throw)))))
+
+(define dot-instance-name cadr)
+(define dot-funcall caddr)
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
 (define eval-binary-op2
@@ -386,8 +386,7 @@
       ((eq? '>= (operator expr)) (>= op1value (eval-expression (operand2 expr) environment throw)))
       ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment throw)))
       ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment throw)))
-      ((eq? 'funcall (operator expr)) (interpret-funcall (cdr expr) environment throw))
-      ;((eq? 'dot (operator expr)) (interpret-dot (cadr expr) (caddr expr) environment throw))
+      ((eq? 'funcall (operator expr)) (interpret-funcall (statement-without-funcall expr) environment throw))
       (else (myerror "Unknown operator:" (operator expr))))))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
@@ -396,7 +395,6 @@
     (if (and (number? val1) (number? val2))
         (= val1 val2)
         (eq? val1 val2))))
-
 
 ;-----------------
 ; HELPER FUNCTIONS
@@ -435,7 +433,6 @@
 (define catch-var
   (lambda (catch-statement)
     (car (operand1 catch-statement))))
-
 
 ;------------------------
 ; Environment/State Functions
@@ -588,8 +585,6 @@
       ((eq? v #t) 'true)
       (else v))))
 
-
-
 ; Because the error function is not defined in R5RS scheme, I create my own:
 (define error-break (lambda (v) v))
 (call-with-current-continuation (lambda (k) (set! error-break k)))
@@ -606,10 +601,10 @@
 ; Tests
 ;------------------------
 ;(interpret "tests/0.txt" 'A) ;55
-(interpret "tests/1.txt" 'A) ;15
-(interpret "tests/2.txt" 'A) ;12
-(interpret "tests/3.txt" 'A) ;125
-(interpret "tests/4.txt" 'A) ;36
+;(interpret "tests/1.txt" 'A) ;15
+;(interpret "tests/2.txt" 'A) ;12
+;(interpret "tests/3.txt" 'A) ;125
+;(interpret "tests/4.txt" 'A) ;36
 ;(interpret "tests/5.txt" 'A) ;54
 ;(interpret "tests/6.txt" 'A) ;110
 ;(interpret "tests/7.txt" 'C) ;26
