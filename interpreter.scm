@@ -66,7 +66,7 @@
       ;((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (interpret-funcall-result-environment (interpret-dot (cadr (function-name (statement-without-funcall statement))) (caddr (function-name (statement-without-funcall statement))) environment throw) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
                                                                                        ;return
                                                                                        ;break continue throw))
-      ((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (update (cadar (statement-without-funcall statement)) (car (interpret-funcall-result-environment (cadr (get-funcall-closure (car (statement-without-funcall statement)) environment)) (add-parameters-to-environment (car (get-funcall-closure (car (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame (append (lookup (cadar (statement-without-funcall statement)) environment) environment)) throw)
+      ((and (eq? 'funcall (statement-type statement)) (list? (function-name (statement-without-funcall statement)))) (update (cadar (statement-without-funcall statement)) (mycar (interpret-funcall-result-environment (cadr (get-funcall-closure (car (statement-without-funcall statement)) environment)) (add-parameters-to-environment (car (get-funcall-closure (car (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame (append (lookup (cadar (statement-without-funcall statement)) environment) environment)) throw)
                                                                                        return
                                                                                        break continue throw)) environment))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall-result-environment (statement-list-from-function (lookup (function-name (statement-without-funcall statement)) environment)) (add-parameters-to-environment (get-parameters (lookup (function-name (statement-without-funcall statement)) environment)) (parameters (statement-without-funcall statement)) (push-frame environment) throw)
@@ -77,6 +77,11 @@
       ((eq? 'class (statement-type statement)) (interpret-class (statement-without-class statement) environment))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
+(define mycar
+  (lambda (l)
+    list (car l)))
+
+
 (define interpret-dot
   (lambda (instance-name field-to-lookup environment throw)
     (cond
@@ -84,7 +89,7 @@
       ((null? field-to-lookup) (myerror "field-to-lookup was null"))
       ((eq? instance-name 'this) (eval-expression field-to-lookup (pop-frame environment) throw))
       ((eq? instance-name 'super) (eval-expression field-to-lookup (pop-frame (pop-frame environment)) throw))
-      (else (eval-expression field-to-lookup (lookup instance-name environment) throw)))))
+      (else (eval-expression field-to-lookup (list (lookup instance-name environment)) throw)))))
 
 (define statement-type car)
 (define statement-without-func cdr)
@@ -315,7 +320,7 @@
 
 (define get-funcall-closure
   (lambda (dot-funcall environment)
-    (lookup (caddr dot-funcall) (lookup (cadr dot-funcall) environment))))
+    (lookup (caddr dot-funcall) (lookup (cadr dot-funcall) environment)))) ; NOTE outer lookup broke on .add bc lookup returned frame instead of environment
 
 ; adds the given parameters to the givene environment
 (define add-parameters-to-environment
